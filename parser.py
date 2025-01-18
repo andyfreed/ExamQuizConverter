@@ -15,10 +15,9 @@ class ExamParser:
         questions_raw = re.finditer(self.question_pattern, content, re.DOTALL)
         parsed_questions = []
 
-        current_position = 0
         for q_match in questions_raw:
             question_text = q_match.group(1).strip()
-            
+
             # Find the next question start or end of file
             next_q_start = len(content)
             next_matches = re.finditer(self.question_pattern, content)
@@ -26,31 +25,38 @@ class ExamParser:
                 if m.start() > q_match.start():
                     next_q_start = m.start()
                     break
-            
+
             # Extract the current question block
             question_block = content[q_match.start():next_q_start]
-            
+
+            # Initialize answers dictionary with empty strings
+            answers = {
+                'A': '',
+                'B': '',
+                'C': '',
+                'D': ''
+            }
+
             # Find answers
-            answers = {}
             for ans_match in re.finditer(self.answer_pattern, question_block, re.DOTALL):
                 letter = ans_match.group(1)
                 answer_text = ans_match.group(2).strip()
                 answers[letter] = answer_text
 
             # Find correct answer
-            correct_answer = None
+            correct_answer = ''
             correct_match = re.search(self.correct_answer_pattern, question_block)
             if correct_match:
                 correct_answer = correct_match.group(1)
 
-            # Create question dictionary
+            # Create question dictionary with all required columns
             question_dict = {
                 'Question': question_text,
-                'A': answers.get('A', ''),
-                'B': answers.get('B', ''),
-                'C': answers.get('C', ''),
-                'D': answers.get('D', ''),
-                'Correct Answer': correct_answer or ''
+                'A': answers['A'],
+                'B': answers['B'],
+                'C': answers['C'],
+                'D': answers['D'],
+                'Correct Answer': correct_answer
             }
             parsed_questions.append(question_dict)
 
@@ -58,6 +64,9 @@ class ExamParser:
 
     def create_dataframe(self, parsed_questions: List[Dict]) -> pd.DataFrame:
         """Convert parsed questions to pandas DataFrame."""
+        if not parsed_questions:
+            # Return empty DataFrame with correct columns
+            return pd.DataFrame(columns=['Question', 'A', 'B', 'C', 'D', 'Correct Answer'])
         return pd.DataFrame(parsed_questions)
 
     def process_file(self, content: str) -> pd.DataFrame:
