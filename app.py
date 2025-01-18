@@ -21,8 +21,12 @@ def read_file_content(uploaded_file):
         # Read the file as bytes first
         bytes_data = uploaded_file.getvalue()
 
+        # Debug: Print file size
+        st.write(f"Debug: File size: {len(bytes_data)} bytes")
+
         # Detect encoding
         encoding = detect_encoding(bytes_data)
+        st.write(f"Debug: Detected encoding: {encoding}")
 
         # Decode the content with fallbacks
         if encoding:
@@ -33,6 +37,7 @@ def read_file_content(uploaded_file):
                 for enc in ['utf-8', 'latin-1', 'cp1252']:
                     try:
                         content = bytes_data.decode(enc)
+                        st.write(f"Debug: Successfully decoded with {enc}")
                         break
                     except UnicodeDecodeError:
                         continue
@@ -40,6 +45,10 @@ def read_file_content(uploaded_file):
                     raise UnicodeDecodeError(f"Could not decode file with any common encoding")
         else:
             content = bytes_data.decode('utf-8')  # Fallback to UTF-8
+
+        # Debug: Print first 500 characters of content
+        st.write("Debug: First 500 characters of content:")
+        st.code(content[:500])
 
         return content, None
     except Exception as e:
@@ -64,51 +73,57 @@ def main():
                 parser = ExamParser()
                 df = parser.process_file(content)
 
+                # Debug: Print parsing results
+                st.write(f"Debug: Number of questions parsed: {len(df)}")
+                if len(df) == 0:
+                    st.write("Debug: No questions were parsed from the content")
+
                 # Preview the data
                 st.subheader("Preview of Parsed Questions")
                 st.dataframe(df)
 
-                # Export options
-                st.subheader("Export Options")
+                if not df.empty:
+                    # Export options
+                    st.subheader("Export Options")
 
-                # Create download buttons
-                col1, col2 = st.columns(2)
+                    # Create download buttons
+                    col1, col2 = st.columns(2)
 
-                with col1:
-                    # Excel export
-                    excel_buffer = io.BytesIO()
-                    df.to_excel(excel_buffer, index=False)
-                    excel_data = excel_buffer.getvalue()
+                    with col1:
+                        # Excel export
+                        excel_buffer = io.BytesIO()
+                        df.to_excel(excel_buffer, index=False)
+                        excel_data = excel_buffer.getvalue()
 
-                    st.download_button(
-                        label="Download as Excel",
-                        data=excel_data,
-                        file_name="exam_questions.xlsx",
-                        mime="application/vnd.ms-excel"
-                    )
+                        st.download_button(
+                            label="Download as Excel",
+                            data=excel_data,
+                            file_name="exam_questions.xlsx",
+                            mime="application/vnd.ms-excel"
+                        )
 
-                with col2:
-                    # CSV export
-                    csv = df.to_csv(index=False)
-                    st.download_button(
-                        label="Download as CSV",
-                        data=csv,
-                        file_name="exam_questions.csv",
-                        mime="text/csv"
-                    )
+                    with col2:
+                        # CSV export
+                        csv = df.to_csv(index=False)
+                        st.download_button(
+                            label="Download as CSV",
+                            data=csv,
+                            file_name="exam_questions.csv",
+                            mime="text/csv"
+                        )
 
-                # Display statistics
-                st.subheader("File Statistics")
-                st.write(f"Total questions parsed: {len(df)}")
+                    # Display statistics
+                    st.subheader("File Statistics")
+                    st.write(f"Total questions parsed: {len(df)}")
 
-                # Show questions with missing data
-                missing_answers = df[df[['A', 'B', 'C', 'D']].isna().any(axis=1)]
-                if not missing_answers.empty:
-                    st.warning(f"Found {len(missing_answers)} questions with missing answer choices")
+                    # Show questions with missing data
+                    missing_answers = df[df[['A', 'B', 'C', 'D']].isna().any(axis=1)]
+                    if not missing_answers.empty:
+                        st.warning(f"Found {len(missing_answers)} questions with missing answer choices")
 
-                missing_correct = df[df['Correct Answer'].isna()]
-                if not missing_correct.empty:
-                    st.warning(f"Found {len(missing_correct)} questions with missing correct answers")
+                    missing_correct = df[df['Correct Answer'].isna()]
+                    if not missing_correct.empty:
+                        st.warning(f"Found {len(missing_correct)} questions with missing correct answers")
 
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")

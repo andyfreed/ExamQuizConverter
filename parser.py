@@ -4,35 +4,32 @@ from typing import Dict, List, Tuple
 
 class ExamParser:
     def __init__(self):
-        # Updated regex patterns for more flexible parsing
-        self.question_pattern = r'(?:^|\n)(?:\d+\.|Q\d+\.)\s*([^\n]+(?:\n(?![A-D]\.|\d+\.|Q\d+\.|Correct)[^\n]+)*)'
-        self.answer_pattern = r'\n([A-D])\.\s*([^\n]+(?:\n(?![A-D]\.|\d+\.|Q\d+\.|Correct)[^\n]+)*)'
-        self.correct_answer_pattern = r'(?:\n|\s)Correct Answer:\s*([A-D])'
+        # Simple patterns that match common exam question formats
+        self.question_pattern = r'(?:^|\n)(\d+)\.\s*([^\n]+)'
+        self.answer_pattern = r'\n([A-D])\.\s*([^\n]+)'
+        self.correct_answer_pattern = r'Correct Answer:\s*([A-D])'
 
     def parse_content(self, content: str) -> List[Dict]:
         """Parse the exam content into structured format."""
-        # Add newline at start and end for consistent matching
-        content = f"\n{content}\n"
+        # Normalize line endings
+        content = content.replace('\r\n', '\n').replace('\r', '\n')
 
-        # Split content into individual questions
-        questions_raw = re.finditer(self.question_pattern, content, re.MULTILINE)
+        # Split content into questions
+        questions_blocks = re.split(r'\n\s*\n', content)
         parsed_questions = []
 
-        for q_match in questions_raw:
-            question_start = q_match.start()
-            question_text = q_match.group(1).strip()
+        for block in questions_blocks:
+            if not block.strip():
+                continue
 
-            # Find the next question start or end of file
-            next_q_start = len(content)
-            for m in re.finditer(self.question_pattern, content):
-                if m.start() > question_start:
-                    next_q_start = m.start()
-                    break
+            # Find question number and text
+            question_match = re.search(self.question_pattern, block)
+            if not question_match:
+                continue
 
-            # Extract the current question block
-            question_block = content[question_start:next_q_start]
+            question_num, question_text = question_match.groups()
 
-            # Initialize answers dictionary
+            # Find answers
             answers = {
                 'A': '',
                 'B': '',
@@ -40,24 +37,21 @@ class ExamParser:
                 'D': ''
             }
 
-            # Find answers
-            answer_matches = re.finditer(self.answer_pattern, question_block)
+            answer_matches = re.finditer(self.answer_pattern, block)
             for ans_match in answer_matches:
-                letter = ans_match.group(1)
-                answer_text = ans_match.group(2).strip()
-                if letter in answers:
-                    answers[letter] = answer_text
+                letter, text = ans_match.groups()
+                answers[letter] = text.strip()
 
             # Find correct answer
             correct_answer = ''
-            correct_match = re.search(self.correct_answer_pattern, question_block)
+            correct_match = re.search(self.correct_answer_pattern, block)
             if correct_match:
                 correct_answer = correct_match.group(1)
 
-            # Only add if we have a valid question
+            # Only add if we have both question and at least one answer
             if question_text and any(answers.values()):
                 question_dict = {
-                    'Question': question_text,
+                    'Question': f"{question_num}. {question_text.strip()}",
                     'A': answers['A'],
                     'B': answers['B'],
                     'C': answers['C'],
