@@ -6,8 +6,7 @@ class ExamParser:
     def __init__(self):
         # Simple patterns that match common exam question formats
         self.question_pattern = r'(?:^|\n)(\d+)\.\s*([^\n]+)'
-        self.answer_pattern = r'\n([A-D])\.\s*([^\n]+)'
-        self.correct_answer_pattern = r'Correct Answer:\s*([A-D])'
+        self.answer_pattern = r'\n([A-D])\.\s*([^\n]+?)(?:\s*\*)?(?=\n|$)'  # Modified to capture optional asterisk
 
     def parse_content(self, content: str) -> List[Dict]:
         """Parse the exam content into structured format."""
@@ -29,24 +28,24 @@ class ExamParser:
 
             question_num, question_text = question_match.groups()
 
-            # Find answers
+            # Find answers and check for asterisk
             answers = {
                 'A': '',
                 'B': '',
                 'C': '',
                 'D': ''
             }
+            correct_answer = ''
 
+            # Look for answers with potential asterisk
             answer_matches = re.finditer(self.answer_pattern, block)
             for ans_match in answer_matches:
                 letter, text = ans_match.groups()
+                # Check if this answer has an asterisk
+                if '*' in text:
+                    correct_answer = letter
+                    text = text.replace('*', '').strip()
                 answers[letter] = text.strip()
-
-            # Find correct answer
-            correct_answer = ''
-            correct_match = re.search(self.correct_answer_pattern, block)
-            if correct_match:
-                correct_answer = correct_match.group(1)
 
             # Only add if we have both question and at least one answer
             if question_text and any(answers.values()):
