@@ -54,10 +54,10 @@ class ExamParser:
             if question_text and any(answers.values()):
                 question_dict = {
                     'Question': f"{question_num}. {question_text.strip()}",
-                    'A': answers['A'],
-                    'B': answers['B'],
-                    'C': answers['C'],
-                    'D': answers['D'],
+                    'answer choice A': answers['A'],
+                    'answer choice B': answers['B'],
+                    'answer choice C': answers['C'],
+                    'answer choice D': answers['D'],
                     'Correct Answer': correct_answer_text
                 }
                 parsed_questions.append(question_dict)
@@ -68,7 +68,8 @@ class ExamParser:
         """Convert parsed questions to pandas DataFrame."""
         if not parsed_questions:
             # Return empty DataFrame with correct columns
-            return pd.DataFrame(columns=['Question', 'A', 'B', 'C', 'D', 'Correct Answer'])
+            return pd.DataFrame(columns=['Question', 'answer choice A', 'answer choice B', 
+                                      'answer choice C', 'answer choice D', 'Correct Answer'])
         return pd.DataFrame(parsed_questions)
 
     def process_file(self, content: str) -> pd.DataFrame:
