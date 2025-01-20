@@ -13,8 +13,8 @@ class ExamParser:
         # Normalize line endings
         content = content.replace('\r\n', '\n').replace('\r', '\n')
 
-        # Split content into questions
-        questions_blocks = re.split(r'\n\s*\n', content)
+        # Split content into questions blocks
+        questions_blocks = re.split(r'\n\s*\n', content.strip())
         parsed_questions = []
 
         for block in questions_blocks:
@@ -35,15 +35,15 @@ class ExamParser:
                 'C': '',
                 'D': ''
             }
-            correct_answer = ''
+            correct_answer_text = ''
 
             # Look for answers with potential asterisk
-            answer_matches = re.finditer(self.answer_pattern, block)
+            answer_matches = list(re.finditer(self.answer_pattern, block))
             for ans_match in answer_matches:
                 letter, text = ans_match.groups()
                 # Check if this answer has an asterisk
                 if '*' in text:
-                    correct_answer = letter
+                    correct_answer_text = text.replace('*', '').strip()
                     text = text.replace('*', '').strip()
                 answers[letter] = text.strip()
 
@@ -55,7 +55,7 @@ class ExamParser:
                     'B': answers['B'],
                     'C': answers['C'],
                     'D': answers['D'],
-                    'Correct Answer': correct_answer
+                    'Correct Answer': correct_answer_text
                 }
                 parsed_questions.append(question_dict)
 
