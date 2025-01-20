@@ -117,7 +117,7 @@ def main():
                     st.write(f"Total questions parsed: {len(df)}")
 
                     # Show questions with missing data
-                    missing_answers = df[df[['A', 'B', 'C', 'D']].isna().any(axis=1)]
+                    missing_answers = df[df[['answer choice A', 'answer choice B', 'answer choice C', 'answer choice D']].isna().any(axis=1)]
                     if not missing_answers.empty:
                         st.warning(f"Found {len(missing_answers)} questions with missing answer choices")
 
