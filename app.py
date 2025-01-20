@@ -132,28 +132,36 @@ def main():
     # Add usage instructions
     with st.expander("📖 Usage Instructions"):
         st.markdown("""
-        ### Expected File Format:
-        1. Questions should start with a number or 'Q' followed by a number
-        2. Answer choices should be labeled A, B, C, D
-        3. Correct answer should be indicated with 'Correct Answer: X'
+            ### Expected File Format:
+            1. Each question should start with a number followed by a period (e.g., "1.", "2.", etc.)
+            2. Questions can be consecutive without blank lines in between
+            3. Each answer choice should be on a new line, starting with A, B, C, or D
+            4. Mark the correct answer with an asterisk (*) at the end
 
-        ### Example Format:
-        ```
-        1. What is the present value of an annuity?
-        A. The future value of all payments
-        B. The sum of all payments
-        C. The current worth of all future payments
-        D. The average of all payments
-        Correct Answer: C
+            ### Example Format:
+            ```
+            1. What is the present value of an annuity?
+            A. The future value of all payments
+            B. The sum of all payments
+            C. The current worth of all future payments*
+            D. The average of all payments
 
-        2. Which factor affects annuity calculations?
-        A. Interest rate
-        B. Payment frequency
-        C. Time period
-        D. All of the above
-        Correct Answer: D
-        ```
-        """)
+            2. Which factor affects annuity calculations?
+            A. Interest rate
+            B. Payment frequency
+            C. Time period
+            D. All of the above*
+            ```
+
+            ### Output Format:
+            The converted file will contain the following columns:
+            - Question
+            - answer choice A
+            - answer choice B
+            - answer choice C
+            - answer choice D
+            - Correct Answer (shows the full text of the correct answer)
+            """)
 
 if __name__ == '__main__':
     main()
