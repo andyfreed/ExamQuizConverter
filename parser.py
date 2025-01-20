@@ -4,8 +4,11 @@ from typing import Dict, List, Tuple
 
 class ExamParser:
     def __init__(self):
-        # Simple patterns that match common exam question formats
-        self.question_pattern = r'(?:^|\n)(\d+)\.\s*([^\n]+)'
+        # Pattern to split content into questions using question numbers
+        self.split_pattern = r'(?=(?:^|\n)\d+\.)'
+        # Pattern to extract question text and number
+        self.question_pattern = r'(\d+)\.\s*([^\n]+)'
+        # Pattern to extract answers with asterisk marker
         self.answer_pattern = r'\n([A-D])\.\s*([^\n]+?)(?:\s*\*)?(?=\n|$)'  # Modified to capture optional asterisk
 
     def parse_content(self, content: str) -> List[Dict]:
@@ -13,8 +16,8 @@ class ExamParser:
         # Normalize line endings
         content = content.replace('\r\n', '\n').replace('\r', '\n')
 
-        # Split content into questions blocks
-        questions_blocks = re.split(r'\n\s*\n', content.strip())
+        # Split content into questions using question numbers
+        questions_blocks = re.split(self.split_pattern, content.strip())
         parsed_questions = []
 
         for block in questions_blocks:
