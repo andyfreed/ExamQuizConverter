@@ -136,14 +136,14 @@ def main():
             1. Each question should start with a number followed by a period (e.g., "1.", "2.", etc.)
             2. Questions can be consecutive without blank lines in between
             3. Each answer choice should be on a new line, starting with A, B, C, or D
-            4. Mark the correct answer with an asterisk (*) at the end
+            4. Mark the correct answer with an asterisk (*) either at the beginning or end of the answer
 
             ### Example Format:
             ```
             1. What is the present value of an annuity?
             A. The future value of all payments
             B. The sum of all payments
-            C. The current worth of all future payments*
+            C. *The current worth of all future payments
             D. The average of all payments
 
             2. Which factor affects annuity calculations?

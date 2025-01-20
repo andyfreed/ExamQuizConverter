@@ -8,8 +8,8 @@ class ExamParser:
         self.split_pattern = r'(?=(?:^|\n)\d+\.)'
         # Pattern to extract question text and number
         self.question_pattern = r'(\d+)\.\s*([^\n]+)'
-        # Pattern to extract answers with asterisk marker
-        self.answer_pattern = r'\n([A-D])\.\s*([^\n]+?)(?:\s*\*)?(?=\n|$)'  # Modified to capture optional asterisk
+        # Pattern to extract answers with asterisk marker (at start or end)
+        self.answer_pattern = r'\n([A-D])\.\s*(\*)?([^\n]+?)(?:\s*\*)?(?=\n|$)'
 
     def parse_content(self, content: str) -> List[Dict]:
         """Parse the exam content into structured format."""
@@ -40,12 +40,12 @@ class ExamParser:
             }
             correct_answer_text = ''
 
-            # Look for answers with potential asterisk
+            # Look for answers with potential asterisk at start or end
             answer_matches = list(re.finditer(self.answer_pattern, block))
             for ans_match in answer_matches:
-                letter, text = ans_match.groups()
-                # Check if this answer has an asterisk
-                if '*' in text:
+                letter, start_asterisk, text = ans_match.groups()
+                # Check if this answer has an asterisk at start or end
+                if start_asterisk or '*' in text:
                     correct_answer_text = text.replace('*', '').strip()
                     text = text.replace('*', '').strip()
                 answers[letter] = text.strip()
