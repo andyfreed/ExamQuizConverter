@@ -4,22 +4,26 @@ from typing import Dict, List, Tuple
 
 class ExamParser:
     def __init__(self):
-        # More flexible pattern to split content into questions
+        # Pattern to match both upper and lowercase answer choices
         self.split_pattern = r'\n*\s*(\d+)\.'
-        # More flexible pattern to extract question text
-        self.question_pattern = r'^\s*(\d+)\.\s*(.+?)(?=\n[A-D]\.|\Z)'
-        # More flexible pattern for answers
-        self.answer_pattern = r'([A-D])\.\s*(\*)?([^\n]+?)(?:\s*\*)?(?=\n[A-D]\.|\n\d+\.|\Z)'
+        # More flexible pattern for question text that can span multiple lines
+        self.question_pattern = r'^\s*(\d+)\.\s*(.+?)(?=\n[a-dA-D]\.|\Z)'
+        # Pattern that handles both upper and lowercase letters with periods
+        self.answer_pattern = r'([a-dA-D])\.\s*(\*)?([^\n]+?)(?:\s*\*)?(?=\n[a-dA-D]\.|\n\d+\.|\Z)'
 
     def parse_content(self, content: str) -> List[Dict]:
         """Parse the exam content into structured format."""
         # Normalize line endings and clean content
         content = content.replace('\r\n', '\n').replace('\r', '\n').strip()
 
+        # Debug print
+        print("Content to parse:", content[:500])  # First 500 chars for debugging
+
         # Split content into questions
         questions_blocks = re.split(self.split_pattern, content)
-        # Remove empty strings from the split
         questions_blocks = [block.strip() for block in questions_blocks if block.strip()]
+
+        print(f"Found {len(questions_blocks)} blocks after splitting")
 
         parsed_questions = []
         question_number = 1
@@ -29,6 +33,9 @@ class ExamParser:
             try:
                 question_num = questions_blocks[i]
                 block = questions_blocks[i+1]
+
+                print(f"\nProcessing question {question_num}:")
+                print(block[:200])  # Print first 200 chars of each block
 
                 # Extract question text using lookahead for answer choices
                 full_text = f"{question_num}. {block}"
@@ -52,9 +59,14 @@ class ExamParser:
                 # Find all answers in the block
                 answer_matches = list(re.finditer(self.answer_pattern, block, re.MULTILINE | re.DOTALL))
 
+                print(f"Found {len(answer_matches)} answer choices")
+
                 for ans_match in answer_matches:
                     letter, start_asterisk, text = ans_match.groups()
                     text = text.strip()
+
+                    # Convert lowercase letters to uppercase for consistency
+                    letter = letter.upper()
 
                     # Check for asterisk at start or end
                     if start_asterisk or '*' in text:
@@ -74,12 +86,14 @@ class ExamParser:
                         'Correct Answer': correct_answer_text
                     }
                     parsed_questions.append(question_dict)
+                    print(f"Successfully parsed question {question_num}")
 
             except Exception as e:
                 print(f"Error parsing question {question_number}: {str(e)}")
 
             question_number += 1
 
+        print(f"\nTotal questions parsed: {len(parsed_questions)}")
         return parsed_questions
 
     def create_dataframe(self, parsed_questions: List[Dict]) -> pd.DataFrame:
