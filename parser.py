@@ -6,7 +6,7 @@ class ExamParser:
     def __init__(self):
         # Simpler pattern to match question number and text
         self.question_pattern = r'(\d+)\.\s*(.*?)(?=\s*[A-Da-d]\.|$)'
-        # Simpler pattern for answer choices
+        # Modified answer pattern to better handle partial and empty answers
         self.answer_pattern = r'([A-Da-d])\.\s*(.*?)(?=\s*[A-Da-d]\.|$|\n\d+\.|\Z)'
         # Answer key pattern
         self.answer_key_pattern = r'(?:^|\n)\s*(\d+)\.\s*([A-Da-d])[.\s]*(?:\n|$)'
@@ -52,25 +52,30 @@ class ExamParser:
                 if question_text.isdigit():
                     continue
 
-                # Find answer choices
+                # Initialize answers with empty strings
                 answers = {'A': '', 'B': '', 'C': '', 'D': ''}
                 correct_answer_text = ''
 
+                # Get the answer section
                 answer_section = question_block[question_match.end():].strip()
-                answer_matches = re.finditer(self.answer_pattern, answer_section, re.DOTALL)
 
+                # Find all answer choices in the text
+                answer_matches = list(re.finditer(self.answer_pattern, answer_section, re.DOTALL))
+
+                # Process each answer choice
                 for match in answer_matches:
                     letter, text = match.groups()
                     letter = letter.upper()
-                    text = text.strip().strip('"')
 
-                    # Store answer text
-                    answers[letter] = text
+                    # Clean and store the answer text
+                    text = text.strip().strip('"').strip()
+                    if text:  # Only store non-empty answers
+                        answers[letter] = text
 
-                    # Check for asterisk marking correct answer
-                    if '*' in text:
-                        correct_answer_text = text.replace('*', '').strip()
-                        answers[letter] = correct_answer_text
+                        # Check for asterisk marking correct answer
+                        if '*' in text:
+                            correct_answer_text = text.replace('*', '').strip()
+                            answers[letter] = correct_answer_text
 
                 # Check answer key if no asterisk was found
                 if not correct_answer_text and question_num in answer_key:
