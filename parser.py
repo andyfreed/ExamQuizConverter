@@ -6,8 +6,8 @@ class ExamParser:
     def __init__(self):
         # Pattern to identify complete questions with their answers
         self.question_block_pattern = r'(?:^|\n)\s*(\d+)\.\s*([^\n]+(?:\n(?![A-Da-d]\.|\d+\.)[^\n]+)*)\s*(?:\n([A-Da-d]\..*?(?=\n\d+\.|\Z)))+' 
-        # Pattern for answer choices
-        self.answer_pattern = r'([A-Da-d])\.\s*(\*)?([^\n]+?)(?:\s*\*)?(?=\n[A-Da-d]\.|\n\d+\.|\Z)'
+        # Pattern for answer choices with better asterisk handling
+        self.answer_pattern = r'([A-Da-d])\.\s*(\*)?([^\n]+?)(\*)?(?=\n[A-Da-d]\.|\n\d+\.|\Z)'
 
     def clean_question_text(self, question_text: str) -> str:
         """Remove question numbers and clean the text."""
@@ -15,7 +15,9 @@ class ExamParser:
         cleaned = re.sub(r'^\d+\.\s*', '', question_text)
         # Remove any years that might appear as numbers
         cleaned = re.sub(r'^\s*\d{4}\.\s*', '', cleaned)
-        return cleaned.strip()
+        # Remove any remaining leading/trailing whitespace and quotes
+        cleaned = cleaned.strip().strip('"')
+        return cleaned
 
     def parse_content(self, content: str) -> List[Dict]:
         """Parse the exam content into structured format."""
@@ -53,17 +55,19 @@ class ExamParser:
                     answer_matches = re.finditer(self.answer_pattern, answers_text, re.MULTILINE | re.DOTALL)
 
                     for ans_match in answer_matches:
-                        letter, start_asterisk, text = ans_match.groups()
+                        letter, start_asterisk, text, end_asterisk = ans_match.groups()
                         letter = letter.upper()
                         text = text.strip()
 
-                        # Clean the answer text
-                        text = text.replace('*', '').strip()
+                        # Remove any quotes and clean the text
+                        text = text.strip().strip('"')
                         answers[letter] = text
 
-                        # Check for asterisk marking correct answer
-                        if start_asterisk or '*' in text:
+                        # Check for asterisk marking correct answer (either at start or end)
+                        if start_asterisk or end_asterisk or '*' in text:
+                            text = text.replace('*', '').strip()
                             correct_answer_text = text
+                            answers[letter] = text
 
                 # Only add if we have both question and at least one answer
                 if cleaned_question and any(answers.values()):
