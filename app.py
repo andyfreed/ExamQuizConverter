@@ -4,11 +4,26 @@ import io
 from parser import ExamParser
 import chardet
 
+# Set page config at the very beginning
 st.set_page_config(
     page_title="Exam Question Converter",
     page_icon="📝",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+
+# Add headers for iframe embedding
+def add_iframe_headers():
+    st.markdown("""
+        <style>
+            header {display: none !important;}
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+        </style>
+    """, unsafe_allow_html=True)
+
+# Call the function to add headers
+add_iframe_headers()
 
 def detect_encoding(file_bytes):
     """Detect the encoding of the uploaded file."""
