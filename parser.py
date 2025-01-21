@@ -8,6 +8,8 @@ class ExamParser:
         self.question_block_pattern = r'(?:^|\n)\s*(\d+)\.\s*([^\n]+(?:\n(?![A-Da-d]\.|\d+\.)[^\n]+)*)\s*(?:\n([A-Da-d]\..*?(?=\n\d+\.|\Z)))+' 
         # Pattern for answer choices with better asterisk handling
         self.answer_pattern = r'([A-Da-d])\.\s*(\*)?([^\n]+?)(\*)?(?=\n[A-Da-d]\.|\n\d+\.|\Z)'
+        # Pattern for answer key entries
+        self.answer_key_pattern = r'(?:^|\n)\s*(\d+)\.\s*([A-Da-d])\s*(?:\n|$)'
 
     def clean_question_text(self, question_text: str) -> str:
         """Remove question numbers and clean the text."""
@@ -19,10 +21,25 @@ class ExamParser:
         cleaned = cleaned.strip().strip('"')
         return cleaned
 
-    def parse_content(self, content: str) -> List[Dict]:
+    def parse_answer_key(self, answer_key_content: str) -> Dict[str, str]:
+        """Parse answer key content into a dictionary of question numbers and correct answer letters."""
+        if not answer_key_content:
+            return {}
+
+        answers = {}
+        matches = re.finditer(self.answer_key_pattern, answer_key_content, re.MULTILINE)
+        for match in matches:
+            question_num, answer_letter = match.groups()
+            answers[question_num.strip()] = answer_letter.strip().upper()
+        return answers
+
+    def parse_content(self, content: str, answer_key_content: str = None) -> List[Dict]:
         """Parse the exam content into structured format."""
         # Normalize line endings and clean content
         content = content.replace('\r\n', '\n').replace('\r', '\n').strip()
+
+        # Parse answer key if provided
+        answer_key = self.parse_answer_key(answer_key_content) if answer_key_content else {}
 
         # Find all question blocks
         question_blocks = re.finditer(self.question_block_pattern, content, re.MULTILINE | re.DOTALL)
@@ -57,17 +74,20 @@ class ExamParser:
                     for ans_match in answer_matches:
                         letter, start_asterisk, text, end_asterisk = ans_match.groups()
                         letter = letter.upper()
-                        text = text.strip()
-
-                        # Remove any quotes and clean the text
                         text = text.strip().strip('"')
                         answers[letter] = text
 
-                        # Check for asterisk marking correct answer (either at start or end)
+                        # Check for asterisk marking correct answer
                         if start_asterisk or end_asterisk or '*' in text:
                             text = text.replace('*', '').strip()
                             correct_answer_text = text
                             answers[letter] = text
+
+                # Check answer key if no asterisk was found
+                if not correct_answer_text and question_num in answer_key:
+                    correct_letter = answer_key[question_num]
+                    if correct_letter in answers:
+                        correct_answer_text = answers[correct_letter]
 
                 # Only add if we have both question and at least one answer
                 if cleaned_question and any(answers.values()):
@@ -95,7 +115,7 @@ class ExamParser:
                                       'answer choice C', 'answer choice D', 'Correct Answer'])
         return pd.DataFrame(parsed_questions)
 
-    def process_file(self, content: str) -> pd.DataFrame:
+    def process_file(self, content: str, answer_key_content: str = None) -> pd.DataFrame:
         """Process file content and return DataFrame."""
-        parsed_questions = self.parse_content(content)
+        parsed_questions = self.parse_content(content, answer_key_content)
         return self.create_dataframe(parsed_questions)

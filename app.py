@@ -45,15 +45,6 @@ def read_file_content(uploaded_file):
             except:
                 raise UnicodeDecodeError("Could not decode file with any supported encoding")
 
-        # Debug information
-        if content:
-            st.write(f"File size: {len(bytes_data)} bytes")
-            st.write(f"Used encoding: {used_encoding}")
-            # Show first few characters for verification
-            preview_length = min(200, len(content))
-            st.text("File preview (first 200 chars):")
-            st.code(content[:preview_length])
-
         return content, None
     except Exception as e:
         detailed_error = f"Error reading file: {str(e)}\nTried encodings: {encodings}"
@@ -63,8 +54,16 @@ def main():
     st.title("📝 Exam Question Converter")
     st.write("Convert exam questions from text format to structured spreadsheet")
 
+    # Add checkbox for separate answer key
+    has_separate_answers = st.checkbox("I have a separate answer key file")
+
     # File upload
     uploaded_file = st.file_uploader("Upload your exam question file", type=['txt'])
+
+    # Answer key file upload (if checkbox is checked)
+    answer_key_file = None
+    if has_separate_answers:
+        answer_key_file = st.file_uploader("Upload your answer key file", type=['txt', 'docx'])
 
     if uploaded_file:
         # Read and parse file
@@ -74,9 +73,19 @@ def main():
             st.error(error)
         else:
             try:
-                # Parse content
+                # Initialize parser
                 parser = ExamParser()
-                df = parser.process_file(content)
+
+                # If we have a separate answer key, read and process it
+                answer_key_content = None
+                if has_separate_answers and answer_key_file:
+                    answer_key_content, key_error = read_file_content(answer_key_file)
+                    if key_error:
+                        st.error(f"Error reading answer key file: {key_error}")
+                        return
+
+                # Parse content with optional answer key
+                df = parser.process_file(content, answer_key_content if has_separate_answers else None)
 
                 # Debug: Print parsing results
                 st.write(f"Debug: Number of questions parsed: {len(df)}")
@@ -141,21 +150,27 @@ def main():
             1. Each question should start with a number followed by a period (e.g., "1.", "2.", etc.)
             2. Questions can be consecutive without blank lines in between
             3. Each answer choice should be on a new line, starting with A, B, C, or D
-            4. Mark the correct answer with an asterisk (*) either at the beginning or end of the answer
+            4. Mark the correct answer with an asterisk (*) OR upload a separate answer key file
 
-            ### Example Format:
+            ### Example Format for Questions:
             ```
             1. What is the present value of an annuity?
             A. The future value of all payments
             B. The sum of all payments
-            C. *The current worth of all future payments
+            C. The current worth of all future payments
             D. The average of all payments
 
             2. Which factor affects annuity calculations?
             A. Interest rate
             B. Payment frequency
             C. Time period
-            D. All of the above*
+            D. All of the above
+            ```
+
+            ### Example Format for Answer Key:
+            ```
+            1. C
+            2. D
             ```
 
             ### Output Format:
