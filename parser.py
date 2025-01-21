@@ -9,6 +9,14 @@ class ExamParser:
         # Pattern for answer choices
         self.answer_pattern = r'([A-Da-d])\.\s*(\*)?([^\n]+?)(?:\s*\*)?(?=\n[A-Da-d]\.|\n\d+\.|\Z)'
 
+    def clean_question_text(self, question_text: str) -> str:
+        """Remove question numbers and clean the text."""
+        # Remove leading numbers and dots
+        cleaned = re.sub(r'^\d+\.\s*', '', question_text)
+        # Remove any years that might appear as numbers
+        cleaned = re.sub(r'^\s*\d{4}\.\s*', '', cleaned)
+        return cleaned.strip()
+
     def parse_content(self, content: str) -> List[Dict]:
         """Parse the exam content into structured format."""
         # Normalize line endings and clean content
@@ -28,6 +36,9 @@ class ExamParser:
                 if question_text.strip().endswith('.') and question_text.strip()[:-1].isdigit():
                     continue
 
+                # Clean the question text
+                cleaned_question = self.clean_question_text(question_text)
+
                 # Initialize answers dictionary
                 answers = {
                     'A': '',
@@ -46,17 +57,18 @@ class ExamParser:
                         letter = letter.upper()
                         text = text.strip()
 
-                        # Check for asterisk marking correct answer
-                        if start_asterisk or '*' in text:
-                            text = text.replace('*', '').strip()
-                            correct_answer_text = text
-
+                        # Clean the answer text
+                        text = text.replace('*', '').strip()
                         answers[letter] = text
 
+                        # Check for asterisk marking correct answer
+                        if start_asterisk or '*' in text:
+                            correct_answer_text = text
+
                 # Only add if we have both question and at least one answer
-                if question_text and any(answers.values()):
+                if cleaned_question and any(answers.values()):
                     question_dict = {
-                        'Question': f"{question_num}. {question_text}",
+                        'Question': cleaned_question,
                         'answer choice A': answers['A'],
                         'answer choice B': answers['B'],
                         'answer choice C': answers['C'],
