@@ -54,16 +54,27 @@ def main():
     st.title("📝 Exam Question Converter")
     st.write("Convert exam questions from text format to structured spreadsheet")
 
+    # Add notice about file format
+    st.info("Please note: Only .txt files are accepted for both exam questions and answer keys.")
+
     # Add checkbox for separate answer key
     has_separate_answers = st.checkbox("I have a separate answer key file")
 
-    # File upload
+    # File upload for questions - only accept .txt
     uploaded_file = st.file_uploader("Upload your exam question file", type=['txt'])
 
-    # Answer key file upload (if checkbox is checked)
+    if uploaded_file is not None and not uploaded_file.name.lower().endswith('.txt'):
+        st.error("Error: Please upload only .txt files for exam questions.")
+        return
+
+    # Answer key file upload (if checkbox is checked) - only accept .txt
     answer_key_file = None
     if has_separate_answers:
-        answer_key_file = st.file_uploader("Upload your answer key file", type=['txt', 'docx'])
+        answer_key_file = st.file_uploader("Upload your answer key file", type=['txt'])
+
+        if answer_key_file is not None and not answer_key_file.name.lower().endswith('.txt'):
+            st.error("Error: Please upload only .txt files for answer keys.")
+            return
 
     if uploaded_file:
         # Read and parse file
@@ -86,11 +97,6 @@ def main():
 
                 # Parse content with optional answer key
                 df = parser.process_file(content, answer_key_content if has_separate_answers else None)
-
-                # Debug: Print parsing results
-                st.write(f"Debug: Number of questions parsed: {len(df)}")
-                if len(df) == 0:
-                    st.write("Debug: No questions were parsed from the content")
 
                 # Preview the data
                 st.subheader("Preview of Parsed Questions")
@@ -146,7 +152,11 @@ def main():
     # Add usage instructions
     with st.expander("📖 Usage Instructions"):
         st.markdown("""
-            ### Expected File Format:
+            ### File Format Requirements:
+            - Only .txt files are accepted for both exam questions and answer keys
+            - Files must be plain text format with proper encoding
+
+            ### Expected Question Format:
             1. Each question should start with a number followed by a period (e.g., "1.", "2.", etc.)
             2. Questions can be consecutive without blank lines in between
             3. Each answer choice should be on a new line, starting with A, B, C, or D
