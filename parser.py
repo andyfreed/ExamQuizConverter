@@ -5,9 +5,9 @@ from typing import Dict, List, Tuple
 class ExamParser:
     def __init__(self):
         # Pattern to identify complete questions with their answers
-        self.question_block_pattern = r'(?:^|\n)\s*(\d+)\.\s*([^\n]+(?:\n(?![A-Da-d]\.|\d+\.)[^\n]+)*)\s*(?:\n([A-Da-d]\..*?(?=\n\d+\.|\Z)))+' 
+        self.question_block_pattern = r'(?:^|\n)\s*(\d+)\.\s*([^\n]+(?:\n(?![A-Da-d]\.|\d+\.)[^\n]+)*)\s*(?:\n([A-Da-d]\..*?(?=\n\d+\.|\Z)))*' 
         # Pattern for answer choices with better asterisk handling
-        self.answer_pattern = r'([A-Da-d])\.\s*(\*)?([^\n]+?)(\*)?(?=\n[A-Da-d]\.|\n\d+\.|\Z)'
+        self.answer_pattern = r'([A-Da-d])\.\s*(\*)?([^\n]*?)(\*)?(?=\n[A-Da-d]\.|\n\d+\.|\Z)'
         # Pattern for answer key entries
         self.answer_key_pattern = r'(?:^|\n)\s*(\d+)\.\s*([A-Da-d])\s*(?:\n|$)'
 
@@ -49,7 +49,7 @@ class ExamParser:
             try:
                 question_num = block.group(1)
                 question_text = block.group(2).strip()
-                answers_text = block.group(3)
+                answers_text = block.group(3) if block.group(3) else ''
 
                 # Skip if it looks like a year or just a number
                 if question_text.strip().endswith('.') and question_text.strip()[:-1].isdigit():
