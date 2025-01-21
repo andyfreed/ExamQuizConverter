@@ -21,38 +21,43 @@ def read_file_content(uploaded_file):
         # Read the file as bytes first
         bytes_data = uploaded_file.getvalue()
 
-        # Debug: Print file size
-        st.write(f"Debug: File size: {len(bytes_data)} bytes")
+        # Try different encodings
+        encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1', 'utf-16']
+        content = None
+        used_encoding = None
 
-        # Detect encoding
-        encoding = detect_encoding(bytes_data)
-        st.write(f"Debug: Detected encoding: {encoding}")
-
-        # Decode the content with fallbacks
-        if encoding:
+        for encoding in encodings:
             try:
                 content = bytes_data.decode(encoding)
+                used_encoding = encoding
+                st.success(f"Successfully read file using {encoding} encoding")
+                break
             except UnicodeDecodeError:
-                # Try common encodings if detected encoding fails
-                for enc in ['utf-8', 'latin-1', 'cp1252']:
-                    try:
-                        content = bytes_data.decode(enc)
-                        st.write(f"Debug: Successfully decoded with {enc}")
-                        break
-                    except UnicodeDecodeError:
-                        continue
-                else:
-                    raise UnicodeDecodeError(f"Could not decode file with any common encoding")
-        else:
-            content = bytes_data.decode('utf-8')  # Fallback to UTF-8
+                continue
 
-        # Debug: Print first 500 characters of content
-        st.write("Debug: First 500 characters of content:")
-        st.code(content[:500])
+        if content is None:
+            # If no encoding worked, try chardet as a last resort
+            detected = chardet.detect(bytes_data)
+            try:
+                content = bytes_data.decode(detected['encoding'] if detected['encoding'] else 'utf-8')
+                used_encoding = detected['encoding']
+                st.success(f"Successfully read file using detected encoding: {detected['encoding']}")
+            except:
+                raise UnicodeDecodeError("Could not decode file with any supported encoding")
+
+        # Debug information
+        if content:
+            st.write(f"File size: {len(bytes_data)} bytes")
+            st.write(f"Used encoding: {used_encoding}")
+            # Show first few characters for verification
+            preview_length = min(200, len(content))
+            st.text("File preview (first 200 chars):")
+            st.code(content[:preview_length])
 
         return content, None
     except Exception as e:
-        return None, f"Error reading file: {str(e)}"
+        detailed_error = f"Error reading file: {str(e)}\nTried encodings: {encodings}"
+        return None, detailed_error
 
 def main():
     st.title("📝 Exam Question Converter")
