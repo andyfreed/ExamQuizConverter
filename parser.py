@@ -4,10 +4,10 @@ from typing import Dict, List, Tuple
 
 class ExamParser:
     def __init__(self):
-        # Simpler pattern to match question number and text
-        self.question_pattern = r'(\d+)\.\s*(.*?)(?=\s*[A-Da-d]\.|$)'
-        # Modified answer pattern to better handle partial and empty answers
-        self.answer_pattern = r'([A-Da-d])\.\s*(.*?)(?=\s*[A-Da-d]\.|$|\n\d+\.|\Z)'
+        # Updated pattern to handle company names with Inc., Ltd., etc.
+        self.question_pattern = r'(\d+)\.\s*(.*?)(?=\s*(?:\n[A-Da-d]\.|$))'
+        # Modified answer pattern to be more strict about answer format
+        self.answer_pattern = r'(?:^|\n)\s*([A-Da-d])\.\s*(.*?)(?=\s*(?:\n[A-Da-d]\.|$|\n\d+\.|$))'
         # Answer key pattern
         self.answer_key_pattern = r'(?:^|\n)\s*(\d+)\.\s*([A-Da-d])[.\s]*(?:\n|$)'
 
@@ -31,7 +31,7 @@ class ExamParser:
         # Parse answer key if provided
         answer_key = self.parse_answer_key(answer_key_content) if answer_key_content else {}
 
-        # Split content into question blocks
+        # Split content into question blocks more accurately
         questions_raw = re.split(r'\n(?=\d+\.)', content)
 
         for question_block in questions_raw:
@@ -40,8 +40,8 @@ class ExamParser:
                 if not question_block.strip():
                     continue
 
-                # Match question
-                question_match = re.match(self.question_pattern, question_block, re.DOTALL)
+                # Match question with improved pattern
+                question_match = re.match(self.question_pattern, question_block, re.DOTALL | re.MULTILINE)
                 if not question_match:
                     continue
 
@@ -56,11 +56,11 @@ class ExamParser:
                 answers = {'A': '', 'B': '', 'C': '', 'D': ''}
                 correct_answer_text = ''
 
-                # Get the answer section
-                answer_section = question_block[question_match.end():].strip()
+                # Get the answer section after the question
+                answer_section = question_block[len(question_match.group(0)):].strip()
 
-                # Find all answer choices in the text
-                answer_matches = list(re.finditer(self.answer_pattern, answer_section, re.DOTALL))
+                # Find all answer choices with improved pattern
+                answer_matches = list(re.finditer(self.answer_pattern, '\n' + answer_section, re.DOTALL | re.MULTILINE))
 
                 # Process each answer choice
                 for match in answer_matches:
