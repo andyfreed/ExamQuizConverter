@@ -147,6 +147,9 @@ def main():
                             mime="text/csv"
                         )
 
+                    # Display success animation
+                    st.image("attached_assets/pepe-pepe-wink.gif", caption="Processing complete! 🎉")
+
                     # Display statistics
                     st.subheader("File Statistics")
                     st.write(f"Total questions parsed: {len(df)}")
