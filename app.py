@@ -3,6 +3,7 @@ import pandas as pd
 import io
 from parser import ExamParser
 import chardet
+from docx import Document
 
 # Set page config at the very beginning
 st.set_page_config(
@@ -25,6 +26,17 @@ def add_iframe_headers():
 # Call the function to add headers
 add_iframe_headers()
 
+def read_docx_content(file_bytes):
+    """Read content from a .docx file."""
+    try:
+        # Create a BytesIO object from the file bytes
+        doc = Document(io.BytesIO(file_bytes))
+        # Extract text from paragraphs
+        content = '\n'.join([paragraph.text for paragraph in doc.paragraphs])
+        return content, None
+    except Exception as e:
+        return None, f"Error reading .docx file: {str(e)}"
+
 def detect_encoding(file_bytes):
     """Detect the encoding of the uploaded file."""
     result = chardet.detect(file_bytes)
@@ -33,10 +45,12 @@ def detect_encoding(file_bytes):
 def read_file_content(uploaded_file):
     """Read file content with appropriate encoding."""
     try:
-        # Read the file as bytes first
-        bytes_data = uploaded_file.getvalue()
+        # Check if file is .docx
+        if uploaded_file.name.lower().endswith('.docx'):
+            return read_docx_content(uploaded_file.getvalue())
 
-        # Try different encodings
+        # For .txt files, use existing logic
+        bytes_data = uploaded_file.getvalue()
         encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1', 'utf-16']
         content = None
         used_encoding = None
@@ -51,7 +65,6 @@ def read_file_content(uploaded_file):
                 continue
 
         if content is None:
-            # If no encoding worked, try chardet as a last resort
             detected = chardet.detect(bytes_data)
             try:
                 content = bytes_data.decode(detected['encoding'] if detected['encoding'] else 'utf-8')
@@ -62,7 +75,7 @@ def read_file_content(uploaded_file):
 
         return content, None
     except Exception as e:
-        detailed_error = f"Error reading file: {str(e)}\nTried encodings: {encodings}"
+        detailed_error = f"Error reading file: {str(e)}"
         return None, detailed_error
 
 def main():
@@ -70,7 +83,7 @@ def main():
     st.write("Convert exam questions from text format to structured spreadsheet")
 
     # Add notice about file format
-    st.info("Please note: Only .txt files are accepted for both exam questions and answer keys.")
+    st.info("Questions must be in .txt format. Answer keys can be in .txt or .docx format.")
 
     # Add checkbox for separate answer key
     has_separate_answers = st.checkbox("I have a separate answer key file")
@@ -78,18 +91,10 @@ def main():
     # File upload for questions - only accept .txt
     uploaded_file = st.file_uploader("Upload your exam question file", type=['txt'])
 
-    if uploaded_file is not None and not uploaded_file.name.lower().endswith('.txt'):
-        st.error("Error: Please upload only .txt files for exam questions.")
-        return
-
-    # Answer key file upload (if checkbox is checked) - only accept .txt
+    # Answer key file upload (if checkbox is checked)
     answer_key_file = None
     if has_separate_answers:
-        answer_key_file = st.file_uploader("Upload your answer key file", type=['txt'])
-
-        if answer_key_file is not None and not answer_key_file.name.lower().endswith('.txt'):
-            st.error("Error: Please upload only .txt files for answer keys.")
-            return
+        answer_key_file = st.file_uploader("Upload your answer key file", type=['txt', 'docx'])
 
     if uploaded_file:
         # Read and parse file
@@ -171,8 +176,9 @@ def main():
     with st.expander("📖 Usage Instructions"):
         st.markdown("""
             ### File Format Requirements:
-            - Only .txt files are accepted for both exam questions and answer keys
-            - Files must be plain text format with proper encoding
+            - Questions must be in .txt format
+            - Answer keys can be in .txt or .docx format
+            - Files must be properly formatted with clear question numbering
 
             ### Expected Question Format:
             1. Each question should start with a number followed by a period (e.g., "1.", "2.", etc.)
