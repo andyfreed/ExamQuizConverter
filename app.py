@@ -4,6 +4,7 @@ import io
 from parser import ExamParser
 import chardet
 from docx import Document
+import re
 
 # Set page config at the very beginning
 st.set_page_config(
@@ -31,9 +32,32 @@ def read_docx_content(file_bytes):
     try:
         # Create a BytesIO object from the file bytes
         doc = Document(io.BytesIO(file_bytes))
-        # Extract text from paragraphs
-        content = '\n'.join([paragraph.text for paragraph in doc.paragraphs])
-        return content, None
+
+        # Extract text from paragraphs and tables
+        content = []
+
+        # Get text from paragraphs
+        for paragraph in doc.paragraphs:
+            text = paragraph.text.strip()
+            if text:  # Only add non-empty paragraphs
+                content.append(text)
+
+        # Get text from tables
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = [cell.text.strip() for cell in row.cells]
+                # Only add rows that have content
+                if any(row_text):
+                    content.append(' '.join(row_text))
+
+        # Join all content with newlines
+        full_content = '\n'.join(content)
+
+        # Clean up the content
+        full_content = re.sub(r'\s+', ' ', full_content)  # Replace multiple spaces with single space
+        full_content = re.sub(r'\n\s*\n', '\n', full_content)  # Remove empty lines
+
+        return full_content, None
     except Exception as e:
         return None, f"Error reading .docx file: {str(e)}"
 

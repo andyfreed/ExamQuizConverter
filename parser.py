@@ -17,10 +17,32 @@ class ExamParser:
             return {}
 
         answers = {}
-        matches = re.finditer(self.answer_key_pattern, answer_key_content, re.MULTILINE)
-        for match in matches:
-            question_num, answer_letter = match.groups()
-            answers[question_num.strip()] = answer_letter.strip().upper()
+
+        # More flexible pattern to match answer keys
+        patterns = [
+            r'(?:^|\n)\s*(\d+)\.\s*([A-Da-d])[.\s]*(?:\n|$)',  # Basic format: "1. A"
+            r'(?:^|\n)\s*(\d+)[.\s]*([A-Da-d])[.\s]*(?:\n|$)',  # Alternative: "1 A"
+            r'(?:^|\n)\s*(\d+)[)\s.]*([A-Da-d])[.\s]*(?:\n|$)',  # Format with parenthesis: "1) A"
+            r'Question\s*(\d+)[:\s]*([A-Da-d])[.\s]*(?:\n|$)',   # Format with "Question": "Question 1: A"
+        ]
+
+        # Try each pattern
+        for pattern in patterns:
+            matches = re.finditer(pattern, answer_key_content, re.MULTILINE)
+            for match in matches:
+                question_num, answer_letter = match.groups()
+                # Clean up and store the answer
+                answers[question_num.strip()] = answer_letter.strip().upper()
+
+        # If no matches found, try looking for answer key in a different format
+        if not answers:
+            # Look for answers in text like "The answer to question 1 is A"
+            text_pattern = r'(?:answer|solution)(?:\s+to)?(?:\s+question)?\s*(\d+)(?:\s+is)?\s+([A-Da-d])'
+            matches = re.finditer(text_pattern, answer_key_content.lower(), re.IGNORECASE)
+            for match in matches:
+                question_num, answer_letter = match.groups()
+                answers[question_num.strip()] = answer_letter.strip().upper()
+
         return answers
 
     def parse_content(self, content: str, answer_key_content: str = None) -> List[Dict]:
@@ -105,7 +127,7 @@ class ExamParser:
         """Convert parsed questions to pandas DataFrame."""
         if not parsed_questions:
             return pd.DataFrame(columns=['Question', 'answer choice A', 'answer choice B', 
-                                      'answer choice C', 'answer choice D', 'Correct Answer'])
+                                          'answer choice C', 'answer choice D', 'Correct Answer'])
         return pd.DataFrame(parsed_questions)
 
     def process_file(self, content: str, answer_key_content: str = None) -> pd.DataFrame:
