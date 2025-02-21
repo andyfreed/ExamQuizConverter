@@ -14,19 +14,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Add headers for iframe embedding
-def add_iframe_headers():
-    st.markdown("""
-        <style>
-            header {display: none !important;}
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-        </style>
-    """, unsafe_allow_html=True)
-
-# Call the function to add headers
-add_iframe_headers()
-
 def read_docx_content(file_bytes):
     """Read content from a .docx file."""
     try:
@@ -36,24 +23,35 @@ def read_docx_content(file_bytes):
         # Extract text from paragraphs and tables
         content = []
 
-        # Get text from paragraphs
-        for paragraph in doc.paragraphs:
-            text = paragraph.text.strip()
-            if text:  # Only add non-empty paragraphs
-                content.append(text)
-
-        # Get text from tables
-        for table in doc.tables:
-            for row in table.rows:
+        # Debug print for tables
+        for table_idx, table in enumerate(doc.tables):
+            print(f"\nProcessing Table {table_idx + 1}:")
+            for row_idx, row in enumerate(table.rows):
                 row_text = [cell.text.strip() for cell in row.cells]
-                # Only add rows that have content
-                if any(row_text):
-                    if len(row_text) >= 2:  # If we have at least question number and answer
-                        # Format as "Question Number: Answer Letter"
-                        question_num = row_text[0].strip().rstrip('.')  # Remove trailing period if present
-                        answer = row_text[1].strip()
-                        if question_num.isdigit() and answer:
+                print(f"Row {row_idx + 1}: {row_text}")
+
+                # Skip empty rows
+                if not any(row_text):
+                    continue
+
+                # Process each cell in the row
+                for i in range(len(row_text)):
+                    # Try to find question number and answer pairs
+                    cell_text = row_text[i].strip()
+
+                    # Skip empty cells
+                    if not cell_text:
+                        continue
+
+                    # Check if this cell contains a question number
+                    match = re.match(r'(\d+)\.?\s*$', cell_text)
+                    if match and i + 1 < len(row_text):
+                        question_num = match.group(1)
+                        # Look at the next cell for the answer
+                        answer = row_text[i + 1].strip()
+                        if answer and re.match(r'^[A-Da-d]$', answer):
                             content.append(f"{question_num}: {answer}")
+                            print(f"Found answer: Question {question_num}: {answer}")
 
         # Join all content with newlines
         full_content = '\n'.join(content)
