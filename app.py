@@ -49,10 +49,11 @@ def read_docx_content(file_bytes):
                 # Only add rows that have content
                 if any(row_text):
                     if len(row_text) >= 2:  # If we have at least question number and answer
-                        # Try to format it as "Question X: Answer"
-                        content.append(f"{row_text[0]}: {row_text[-1]}")
-                    else:
-                        content.append(' '.join(row_text))
+                        # Format as "Question Number: Answer Letter"
+                        question_num = row_text[0].strip().rstrip('.')  # Remove trailing period if present
+                        answer = row_text[1].strip()
+                        if question_num.isdigit() and answer:
+                            content.append(f"{question_num}: {answer}")
 
         # Join all content with newlines
         full_content = '\n'.join(content)

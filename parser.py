@@ -8,8 +8,6 @@ class ExamParser:
         self.question_pattern = r'(\d+)\.\s*(.*?)(?=\s*(?:\n[A-Da-d]\.|$))'
         # Modified answer pattern to be more strict about answer format
         self.answer_pattern = r'(?:^|\n)\s*([A-Da-d])\.\s*(.*?)(?=\s*(?:\n[A-Da-d]\.|$|\n\d+\.|$))'
-        # Answer key pattern
-        self.answer_key_pattern = r'(?:^|\n)\s*(\d+)\.\s*([A-Da-d])[.\s]*(?:\n|$)'
 
     def parse_answer_key(self, answer_key_content: str) -> Dict[str, str]:
         """Parse answer key content into a dictionary."""
@@ -18,21 +16,15 @@ class ExamParser:
 
         answers = {}
 
-        # More flexible pattern to match answer keys
-        patterns = [
-            r'(?:^|\n)\s*(\d+)[\s.:)]*([A-Da-d])[.\s]*(?:\n|$)',  # Basic formats like "1. A", "1: A", "1) A"
-            r'(?:^|\n)\s*Question\s*(\d+)[:\s]*([A-Da-d])[.\s]*(?:\n|$)',  # Format with "Question": "Question 1: A"
-            r'(?:^|\n)\s*(\d+)(?:\.|:|\)|\s)\s*(?:Answer:?)?\s*([A-Da-d])[.\s]*(?:\n|$)',  # Various delimiters
-            r'(?:^|\n)\s*(?:Answer to )?\s*(?:question |#)?(\d+)[:\s]*(?:is |=|\s+)?([A-Da-d])[.\s]*(?:\n|$)',  # More variations
-        ]
+        # Simple pattern to match question number and answer letter
+        # This pattern looks for "number: letter" format
+        pattern = r'(\d+)\s*:\s*([A-Da-d])'
 
-        # Try each pattern
-        for pattern in patterns:
-            matches = re.finditer(pattern, answer_key_content, re.MULTILINE | re.IGNORECASE)
-            for match in matches:
-                question_num, answer_letter = match.groups()
-                # Clean up and store the answer
-                answers[question_num.strip()] = answer_letter.strip().upper()
+        matches = re.finditer(pattern, answer_key_content, re.MULTILINE | re.IGNORECASE)
+        for match in matches:
+            question_num, answer_letter = match.groups()
+            # Clean up and store the answer
+            answers[question_num.strip()] = answer_letter.strip().upper()
 
         # Debug print
         print("Found answers:", answers)
@@ -47,7 +39,7 @@ class ExamParser:
         # Parse answer key if provided
         answer_key = self.parse_answer_key(answer_key_content) if answer_key_content else {}
 
-        # Split content into question blocks more accurately
+        # Split content into question blocks
         questions_raw = re.split(r'\n(?=\d+\.)', content)
 
         for question_block in questions_raw:
@@ -56,7 +48,7 @@ class ExamParser:
                 if not question_block.strip():
                     continue
 
-                # Match question with improved pattern
+                # Match question
                 question_match = re.match(self.question_pattern, question_block, re.DOTALL | re.MULTILINE)
                 if not question_match:
                     continue
@@ -75,16 +67,15 @@ class ExamParser:
                 # Get the answer section after the question
                 answer_section = question_block[len(question_match.group(0)):].strip()
 
-                # Find all answer choices with improved pattern
+                # Find all answer choices
                 answer_matches = list(re.finditer(self.answer_pattern, '\n' + answer_section, re.DOTALL | re.MULTILINE))
 
                 # Process each answer choice
                 for match in answer_matches:
                     letter, text = match.groups()
                     letter = letter.upper()
-
-                    # Clean and store the answer text
                     text = text.strip().strip('"').strip()
+
                     if text:  # Only store non-empty answers
                         answers[letter] = text
 
@@ -93,7 +84,7 @@ class ExamParser:
                             correct_answer_text = text.replace('*', '').strip()
                             answers[letter] = correct_answer_text
 
-                # Check answer key if no asterisk was found
+                # Check answer key
                 if not correct_answer_text and question_num in answer_key:
                     correct_letter = answer_key[question_num]
                     if correct_letter in answers:
@@ -121,7 +112,7 @@ class ExamParser:
         """Convert parsed questions to pandas DataFrame."""
         if not parsed_questions:
             return pd.DataFrame(columns=['Question', 'answer choice A', 'answer choice B', 
-                                          'answer choice C', 'answer choice D', 'Correct Answer'])
+                                      'answer choice C', 'answer choice D', 'Correct Answer'])
         return pd.DataFrame(parsed_questions)
 
     def process_file(self, content: str, answer_key_content: str = None) -> pd.DataFrame:
