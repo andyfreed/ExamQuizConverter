@@ -20,28 +20,22 @@ class ExamParser:
 
         # More flexible pattern to match answer keys
         patterns = [
-            r'(?:^|\n)\s*(\d+)\.\s*([A-Da-d])[.\s]*(?:\n|$)',  # Basic format: "1. A"
-            r'(?:^|\n)\s*(\d+)[.\s]*([A-Da-d])[.\s]*(?:\n|$)',  # Alternative: "1 A"
-            r'(?:^|\n)\s*(\d+)[)\s.]*([A-Da-d])[.\s]*(?:\n|$)',  # Format with parenthesis: "1) A"
-            r'Question\s*(\d+)[:\s]*([A-Da-d])[.\s]*(?:\n|$)',   # Format with "Question": "Question 1: A"
+            r'(?:^|\n)\s*(\d+)[\s.:)]*([A-Da-d])[.\s]*(?:\n|$)',  # Basic formats like "1. A", "1: A", "1) A"
+            r'(?:^|\n)\s*Question\s*(\d+)[:\s]*([A-Da-d])[.\s]*(?:\n|$)',  # Format with "Question": "Question 1: A"
+            r'(?:^|\n)\s*(\d+)(?:\.|:|\)|\s)\s*(?:Answer:?)?\s*([A-Da-d])[.\s]*(?:\n|$)',  # Various delimiters
+            r'(?:^|\n)\s*(?:Answer to )?\s*(?:question |#)?(\d+)[:\s]*(?:is |=|\s+)?([A-Da-d])[.\s]*(?:\n|$)',  # More variations
         ]
 
         # Try each pattern
         for pattern in patterns:
-            matches = re.finditer(pattern, answer_key_content, re.MULTILINE)
+            matches = re.finditer(pattern, answer_key_content, re.MULTILINE | re.IGNORECASE)
             for match in matches:
                 question_num, answer_letter = match.groups()
                 # Clean up and store the answer
                 answers[question_num.strip()] = answer_letter.strip().upper()
 
-        # If no matches found, try looking for answer key in a different format
-        if not answers:
-            # Look for answers in text like "The answer to question 1 is A"
-            text_pattern = r'(?:answer|solution)(?:\s+to)?(?:\s+question)?\s*(\d+)(?:\s+is)?\s+([A-Da-d])'
-            matches = re.finditer(text_pattern, answer_key_content.lower(), re.IGNORECASE)
-            for match in matches:
-                question_num, answer_letter = match.groups()
-                answers[question_num.strip()] = answer_letter.strip().upper()
+        # Debug print
+        print("Found answers:", answers)
 
         return answers
 

@@ -48,7 +48,11 @@ def read_docx_content(file_bytes):
                 row_text = [cell.text.strip() for cell in row.cells]
                 # Only add rows that have content
                 if any(row_text):
-                    content.append(' '.join(row_text))
+                    if len(row_text) >= 2:  # If we have at least question number and answer
+                        # Try to format it as "Question X: Answer"
+                        content.append(f"{row_text[0]}: {row_text[-1]}")
+                    else:
+                        content.append(' '.join(row_text))
 
         # Join all content with newlines
         full_content = '\n'.join(content)
@@ -56,6 +60,9 @@ def read_docx_content(file_bytes):
         # Clean up the content
         full_content = re.sub(r'\s+', ' ', full_content)  # Replace multiple spaces with single space
         full_content = re.sub(r'\n\s*\n', '\n', full_content)  # Remove empty lines
+
+        # Debug print
+        print("Extracted content from DOCX:", full_content)
 
         return full_content, None
     except Exception as e:
