@@ -32,12 +32,41 @@ jobs:
       with:
         creds: ${{ toJSON(fromJSON(format('{"clientId":"{0}","clientSecret":"{1}","subscriptionId":"{2}","tenantId":"{3}"}', secrets.AZURE_CLIENT_ID, secrets.AZURE_CLIENT_SECRET, secrets.AZURE_SUBSCRIPTION_ID, secrets.AZURE_TENANT_ID))) }}
 
+    - name: Create Azure Web App if not exists
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          # Check if web app exists
+          if ! az webapp show --name ${{ secrets.AZURE_WEBAPP_NAME }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} &> /dev/null; then
+            echo "Creating Web App..."
+            az webapp create \
+              --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --plan ${{ secrets.AZURE_APP_SERVICE_PLAN }} \
+              --runtime "PYTHON|3.10"
+          fi
+
     - name: Configure Azure Web App
       uses: azure/CLI@v1
       with:
         inlineScript: |
-          az webapp config appsettings set --name ${{ secrets.AZURE_WEBAPP_NAME }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true PYTHON_ENABLE_GUNICORN=true STREAMLIT_SERVER_PORT=8000 WEBSITES_PORT=8000
-          az webapp config set --name ${{ secrets.AZURE_WEBAPP_NAME }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --startup-file "${{ env.STARTUP_COMMAND }}" --python-version ${{ env.PYTHON_VERSION }}
+          # Configure app settings
+          az webapp config appsettings set \
+            --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --settings \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+              PYTHON_ENABLE_GUNICORN=true \
+              STREAMLIT_SERVER_PORT=8000 \
+              WEBSITES_PORT=8000 \
+              PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+
+          # Configure startup command and Python version
+          az webapp config set \
+            --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --startup-file "${{ env.STARTUP_COMMAND }}" \
+            --python-version ${{ env.PYTHON_VERSION }}
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
