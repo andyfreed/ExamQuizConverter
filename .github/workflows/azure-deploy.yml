@@ -1,6 +1,7 @@
 name: Deploy to Azure
 
 # Workflow for deploying Python app to Azure Web App
+# Handles deployment package creation, Azure resource setup, and deployment verification
 on:
   push:
     branches:
