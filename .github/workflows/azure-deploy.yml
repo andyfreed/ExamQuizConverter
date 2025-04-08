@@ -9,6 +9,7 @@ on:
 env:
   PYTHON_VERSION: '3.10'
   STARTUP_COMMAND: 'sh startup.sh'
+  AZURE_LOCATION: 'eastus'
 
 jobs:
   build-and-deploy:
@@ -31,6 +32,32 @@ jobs:
       uses: azure/login@v1
       with:
         creds: ${{ toJSON(fromJSON(format('{"clientId":"{0}","clientSecret":"{1}","subscriptionId":"{2}","tenantId":"{3}"}', secrets.AZURE_CLIENT_ID, secrets.AZURE_CLIENT_SECRET, secrets.AZURE_SUBSCRIPTION_ID, secrets.AZURE_TENANT_ID))) }}
+
+    - name: Create Resource Group if not exists
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          # Check if resource group exists
+          if ! az group show --name ${{ secrets.AZURE_RESOURCE_GROUP }} &> /dev/null; then
+            echo "Creating Resource Group..."
+            az group create \
+              --name ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --location "${{ env.AZURE_LOCATION }}"
+          fi
+
+    - name: Create App Service Plan if not exists
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          # Check if app service plan exists
+          if ! az appservice plan show --name ${{ secrets.AZURE_APP_SERVICE_PLAN }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} &> /dev/null; then
+            echo "Creating App Service Plan..."
+            az appservice plan create \
+              --name ${{ secrets.AZURE_APP_SERVICE_PLAN }} \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --sku B1 \
+              --is-linux
+          fi
 
     - name: Create Azure Web App if not exists
       uses: azure/CLI@v1
@@ -66,7 +93,8 @@ jobs:
             --name ${{ secrets.AZURE_WEBAPP_NAME }} \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --startup-file "${{ env.STARTUP_COMMAND }}" \
-            --python-version ${{ env.PYTHON_VERSION }}
+            --python-version ${{ env.PYTHON_VERSION }} \
+            --linux-fx-version "PYTHON|${{ env.PYTHON_VERSION }}"
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2

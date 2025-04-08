@@ -8,18 +8,13 @@ echo "Starting deployment script..."
 # Make the script executable
 chmod +x startup.sh
 
-# Create and activate virtual environment
-echo "Setting up Python virtual environment..."
-python -m venv .venv
-source .venv/bin/activate
-
 # Install dependencies
 echo "Installing dependencies..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
 # Get the port from environment variable or use default
-PORT=${PORT:-8000}
+PORT=${WEBSITES_PORT:-8000}
 echo "Using port: $PORT"
 
 # Start Streamlit with all necessary configurations
@@ -31,4 +26,5 @@ streamlit run main.py \
     --browser.serverAddress "0.0.0.0" \
     --server.enableCORS false \
     --server.enableXsrfProtection false \
-    --server.maxUploadSize 200 
+    --server.maxUploadSize 200 \
+    --server.headless true 
