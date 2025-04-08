@@ -11,6 +11,7 @@ env:
   PYTHON_VERSION: '3.10.16'
   STARTUP_COMMAND: 'sh startup.sh'
   AZURE_LOCATION: 'eastus'
+  RESOURCE_GROUP: 'BHFEApps'  # Add resource group name directly in env
 
 jobs:
   build-and-deploy:
@@ -43,11 +44,15 @@ jobs:
       with:
         inlineScript: |
           # Check if resource group exists
-          RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
-          if ! az group show --name "$RESOURCE_GROUP" &> /dev/null; then
+          if [ -z "${{ env.RESOURCE_GROUP }}" ]; then
+            echo "Error: RESOURCE_GROUP is not set"
+            exit 1
+          fi
+          
+          if ! az group show --name "${{ env.RESOURCE_GROUP }}" &> /dev/null; then
             echo "Creating Resource Group..."
             az group create \
-              --name "$RESOURCE_GROUP" \
+              --name "${{ env.RESOURCE_GROUP }}" \
               --location "${{ env.AZURE_LOCATION }}"
           fi
 
@@ -56,13 +61,22 @@ jobs:
       with:
         inlineScript: |
           # Check if app service plan exists
-          RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
+          if [ -z "${{ env.RESOURCE_GROUP }}" ]; then
+            echo "Error: RESOURCE_GROUP is not set"
+            exit 1
+          fi
+          
           APP_SERVICE_PLAN="${{ secrets.AZURE_APP_SERVICE_PLAN }}"
-          if ! az appservice plan show --name "$APP_SERVICE_PLAN" --resource-group "$RESOURCE_GROUP" &> /dev/null; then
+          if [ -z "$APP_SERVICE_PLAN" ]; then
+            echo "Error: AZURE_APP_SERVICE_PLAN secret is not set"
+            exit 1
+          fi
+          
+          if ! az appservice plan show --name "$APP_SERVICE_PLAN" --resource-group "${{ env.RESOURCE_GROUP }}" &> /dev/null; then
             echo "Creating App Service Plan..."
             az appservice plan create \
               --name "$APP_SERVICE_PLAN" \
-              --resource-group "$RESOURCE_GROUP" \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
               --sku B1 \
               --is-linux
           fi
@@ -72,14 +86,18 @@ jobs:
       with:
         inlineScript: |
           # Check if web app exists
-          RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
-          APP_SERVICE_PLAN="${{ secrets.AZURE_APP_SERVICE_PLAN }}"
           WEBAPP_NAME="${{ secrets.AZURE_WEBAPP_NAME }}"
-          if ! az webapp show --name "$WEBAPP_NAME" --resource-group "$RESOURCE_GROUP" &> /dev/null; then
+          if [ -z "$WEBAPP_NAME" ]; then
+            echo "Error: AZURE_WEBAPP_NAME secret is not set"
+            exit 1
+          fi
+          
+          APP_SERVICE_PLAN="${{ secrets.AZURE_APP_SERVICE_PLAN }}"
+          if ! az webapp show --name "$WEBAPP_NAME" --resource-group "${{ env.RESOURCE_GROUP }}" &> /dev/null; then
             echo "Creating Web App..."
             az webapp create \
               --name "$WEBAPP_NAME" \
-              --resource-group "$RESOURCE_GROUP" \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
               --plan "$APP_SERVICE_PLAN" \
               --runtime "PYTHON|3.10"
           fi
@@ -89,11 +107,10 @@ jobs:
       with:
         inlineScript: |
           # Configure app settings
-          RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
           WEBAPP_NAME="${{ secrets.AZURE_WEBAPP_NAME }}"
           az webapp config appsettings set \
             --name "$WEBAPP_NAME" \
-            --resource-group "$RESOURCE_GROUP" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
             --settings \
               SCM_DO_BUILD_DURING_DEPLOYMENT=true \
               PYTHON_ENABLE_GUNICORN=false \
@@ -107,7 +124,7 @@ jobs:
           # Configure startup command and Python version
           az webapp config set \
             --name "$WEBAPP_NAME" \
-            --resource-group "$RESOURCE_GROUP" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
             --startup-file "${{ env.STARTUP_COMMAND }}" \
             --python-version "3.10" \
             --linux-fx-version "PYTHON|3.10"
