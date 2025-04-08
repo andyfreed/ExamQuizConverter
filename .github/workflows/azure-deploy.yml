@@ -10,8 +10,8 @@ on:
 env:
   PYTHON_VERSION: '3.10.16'
   STARTUP_COMMAND: 'sh startup.sh'
-  AZURE_LOCATION: 'eastus'
-  RESOURCE_GROUP: 'BHFEApps'  # Add resource group name directly in env
+  AZURE_LOCATION: 'eastus2'
+  RESOURCE_GROUP: 'BHFEApps'
 
 jobs:
   build-and-deploy:
@@ -72,13 +72,29 @@ jobs:
             exit 1
           fi
           
-          if ! az appservice plan show --name "$APP_SERVICE_PLAN" --resource-group "${{ env.RESOURCE_GROUP }}" &> /dev/null; then
-            echo "Creating App Service Plan..."
-            az appservice plan create \
+          # Try to create app service plan with fallback regions
+          regions=("eastus2" "eastus" "centralus" "westus2")
+          created=false
+          
+          for region in "${regions[@]}"; do
+            echo "Attempting to create App Service Plan in $region..."
+            if az appservice plan create \
               --name "$APP_SERVICE_PLAN" \
               --resource-group "${{ env.RESOURCE_GROUP }}" \
               --sku B1 \
-              --is-linux
+              --is-linux \
+              --location "$region" &> /dev/null; then
+              echo "Successfully created App Service Plan in $region"
+              created=true
+              break
+            else
+              echo "Failed to create App Service Plan in $region, trying next region..."
+            fi
+          done
+          
+          if [ "$created" = false ]; then
+            echo "Error: Failed to create App Service Plan in any region"
+            exit 1
           fi
 
     - name: Create Azure Web App if not exists
