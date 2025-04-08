@@ -135,7 +135,8 @@ jobs:
               PYTHON_VERSION=${{ env.PYTHON_VERSION }} \
               STREAMLIT_SERVER_PORT=8000 \
               STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
-              STREAMLIT_SERVER_HEADLESS=true
+              STREAMLIT_SERVER_HEADLESS=true \
+              POST_BUILD_COMMAND="bash startup.sh"
 
           # Configure startup command and Python version
           az webapp config set \
@@ -145,8 +146,15 @@ jobs:
             --python-version "3.10" \
             --linux-fx-version "PYTHON|3.10"
 
+    - name: Prepare deployment package
+      run: |
+        # Create deployment package
+        echo "Creating deployment package..."
+        zip -r deploy.zip . -x "*.git*" "*.github*" "*.vscode*" "*.env*" "*.pyc" "__pycache__/*"
+
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-        package: . 
+        package: deploy.zip
+        slot-name: production 
