@@ -1,6 +1,6 @@
 name: Deploy to Azure
 
-# Note: Requires Azure Service Principal with Contributor role on the resource group
+# Workflow for deploying Python app to Azure Web App
 on:
   push:
     branches:
