@@ -144,6 +144,7 @@ jobs:
         mkdir -p deploy_temp
         
         # Copy necessary files
+        echo "Copying files to deployment directory..."
         cp -r \
           .deployment \
           .streamlit \
@@ -156,39 +157,96 @@ jobs:
           deploy_temp/
         
         # Set correct permissions in the deployment directory
+        echo "Setting file permissions..."
         chmod +x deploy_temp/startup.sh
         find deploy_temp -type f -name "*.py" -exec chmod 644 {} \;
         
         # Create deployment package
+        echo "Creating ZIP archive..."
         cd deploy_temp
         zip -r ../deploy.zip .
         cd ..
         
-        # Verify package contents
-        echo "Deployment package contents:"
+        # Verify package contents and size
+        echo "Verifying deployment package:"
+        ls -lh deploy.zip
+        echo "Package contents:"
         unzip -l deploy.zip
         
         # Clean up
         rm -rf deploy_temp
 
+    - name: Stop existing web app
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          WEBAPP_NAME="${{ secrets.AZURE_WEBAPP_NAME }}"
+          echo "Stopping web app before deployment..."
+          az webapp stop \
+            --name "$WEBAPP_NAME" \
+            --resource-group "${{ env.RESOURCE_GROUP }}"
+
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
+      timeout-minutes: 10
       with:
         app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
         package: deploy.zip
         slot-name: production
 
-    - name: Post-deployment verification
+    - name: Start web app and verify deployment
       uses: azure/CLI@v1
       with:
         inlineScript: |
           WEBAPP_NAME="${{ secrets.AZURE_WEBAPP_NAME }}"
-          echo "Checking deployment status..."
-          az webapp deployment list-publishing-credentials \
+          
+          echo "Starting web app..."
+          az webapp start \
             --name "$WEBAPP_NAME" \
             --resource-group "${{ env.RESOURCE_GROUP }}"
           
-          echo "Checking application logs..."
-          az webapp log tail \
+          echo "Waiting for app to start..."
+          sleep 30
+          
+          echo "Checking deployment status..."
+          DEPLOY_STATUS=$(az webapp deployment list \
             --name "$WEBAPP_NAME" \
-            --resource-group "${{ env.RESOURCE_GROUP }}" 
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --query "[0].status" -o tsv)
+          
+          echo "Deployment status: $DEPLOY_STATUS"
+          
+          if [ "$DEPLOY_STATUS" != "Success" ]; then
+            echo "Deployment may have failed. Checking logs..."
+            az webapp log tail \
+              --name "$WEBAPP_NAME" \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
+              --provider http
+            exit 1
+          fi
+          
+          echo "Checking application health..."
+          APP_URL=$(az webapp show \
+            --name "$WEBAPP_NAME" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --query "defaultHostName" -o tsv)
+          
+          echo "Application URL: https://$APP_URL"
+          
+          # Wait for the app to be responsive
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -s -f "https://$APP_URL" > /dev/null; then
+              echo "Application is responding successfully!"
+              exit 0
+            fi
+            
+            echo "Waiting for application to respond... (Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+            sleep 30
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+          done
+          
+          echo "Warning: Application is not responding after deployment"
+          exit 1 
