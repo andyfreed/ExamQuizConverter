@@ -18,7 +18,6 @@ APPS = {
 def main():
     # Configure Streamlit for Azure environment
     if os.environ.get('WEBSITE_HOSTNAME'):  # Check if running on Azure
-        st.set_option('server.address', '0.0.0.0')
         st.set_option('server.port', int(os.environ.get('PORT', 8000)))
         st.set_option('server.baseUrlPath', '')
     

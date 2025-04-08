@@ -1,7 +1,7 @@
 [server]
+address = "0.0.0.0"
 enableCORS = false
 enableXsrfProtection = false
-address = "0.0.0.0"
 
 [browser]
 serverAddress = "0.0.0.0"
