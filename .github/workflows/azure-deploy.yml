@@ -33,6 +33,8 @@ jobs:
     - name: Set file permissions
       run: |
         chmod +x startup.sh
+        find . -type f -name "*.py" -exec chmod 644 {} \;
+        find . -type f -name "*.sh" -exec chmod 755 {} \;
         
     - name: Login to Azure
       uses: azure/login@v1
@@ -43,7 +45,6 @@ jobs:
       uses: azure/CLI@v1
       with:
         inlineScript: |
-          # Check if resource group exists
           if [ -z "${{ env.RESOURCE_GROUP }}" ]; then
             echo "Error: RESOURCE_GROUP is not set"
             exit 1
@@ -60,19 +61,12 @@ jobs:
       uses: azure/CLI@v1
       with:
         inlineScript: |
-          # Check if app service plan exists
-          if [ -z "${{ env.RESOURCE_GROUP }}" ]; then
-            echo "Error: RESOURCE_GROUP is not set"
-            exit 1
-          fi
-          
           APP_SERVICE_PLAN="${{ secrets.AZURE_APP_SERVICE_PLAN }}"
           if [ -z "$APP_SERVICE_PLAN" ]; then
             echo "Error: AZURE_APP_SERVICE_PLAN secret is not set"
             exit 1
           fi
           
-          # Try to create app service plan with fallback regions
           regions=("eastus2" "eastus" "centralus" "westus2")
           created=false
           
@@ -87,8 +81,6 @@ jobs:
               echo "Successfully created App Service Plan in $region"
               created=true
               break
-            else
-              echo "Failed to create App Service Plan in $region, trying next region..."
             fi
           done
           
@@ -97,33 +89,28 @@ jobs:
             exit 1
           fi
 
-    - name: Create Azure Web App if not exists
+    - name: Create and Configure Azure Web App
       uses: azure/CLI@v1
       with:
         inlineScript: |
-          # Check if web app exists
           WEBAPP_NAME="${{ secrets.AZURE_WEBAPP_NAME }}"
           if [ -z "$WEBAPP_NAME" ]; then
             echo "Error: AZURE_WEBAPP_NAME secret is not set"
             exit 1
           fi
           
-          APP_SERVICE_PLAN="${{ secrets.AZURE_APP_SERVICE_PLAN }}"
+          # Create web app if it doesn't exist
           if ! az webapp show --name "$WEBAPP_NAME" --resource-group "${{ env.RESOURCE_GROUP }}" &> /dev/null; then
             echo "Creating Web App..."
             az webapp create \
               --name "$WEBAPP_NAME" \
               --resource-group "${{ env.RESOURCE_GROUP }}" \
-              --plan "$APP_SERVICE_PLAN" \
+              --plan "${{ secrets.AZURE_APP_SERVICE_PLAN }}" \
               --runtime "PYTHON|3.10"
           fi
 
-    - name: Configure Azure Web App
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
           # Configure app settings
-          WEBAPP_NAME="${{ secrets.AZURE_WEBAPP_NAME }}"
+          echo "Configuring Web App settings..."
           az webapp config appsettings set \
             --name "$WEBAPP_NAME" \
             --resource-group "${{ env.RESOURCE_GROUP }}" \
@@ -139,6 +126,7 @@ jobs:
               POST_BUILD_COMMAND="bash startup.sh"
 
           # Configure startup command and Python version
+          echo "Setting startup command and Python version..."
           az webapp config set \
             --name "$WEBAPP_NAME" \
             --resource-group "${{ env.RESOURCE_GROUP }}" \
@@ -148,13 +136,59 @@ jobs:
 
     - name: Prepare deployment package
       run: |
-        # Create deployment package
         echo "Creating deployment package..."
-        zip -r deploy.zip . -x "*.git*" "*.github*" "*.vscode*" "*.env*" "*.pyc" "__pycache__/*"
+        # Remove any existing deploy.zip
+        rm -f deploy.zip
+        
+        # Create a clean deployment directory
+        mkdir -p deploy_temp
+        
+        # Copy necessary files
+        cp -r \
+          .deployment \
+          .streamlit \
+          apps \
+          attached_assets \
+          *.py \
+          requirements.txt \
+          startup.sh \
+          web.config \
+          deploy_temp/
+        
+        # Set correct permissions in the deployment directory
+        chmod +x deploy_temp/startup.sh
+        find deploy_temp -type f -name "*.py" -exec chmod 644 {} \;
+        
+        # Create deployment package
+        cd deploy_temp
+        zip -r ../deploy.zip .
+        cd ..
+        
+        # Verify package contents
+        echo "Deployment package contents:"
+        unzip -l deploy.zip
+        
+        # Clean up
+        rm -rf deploy_temp
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
         package: deploy.zip
-        slot-name: production 
+        slot-name: production
+
+    - name: Post-deployment verification
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          WEBAPP_NAME="${{ secrets.AZURE_WEBAPP_NAME }}"
+          echo "Checking deployment status..."
+          az webapp deployment list-publishing-credentials \
+            --name "$WEBAPP_NAME" \
+            --resource-group "${{ env.RESOURCE_GROUP }}"
+          
+          echo "Checking application logs..."
+          az webapp log tail \
+            --name "$WEBAPP_NAME" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" 
