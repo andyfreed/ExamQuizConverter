@@ -203,11 +203,16 @@ jobs:
             fi
           done
           
-          # Clean up existing deployments
+          # Clean up existing deployments by restarting the web app
           echo "Cleaning up existing deployments..."
-          az webapp deployment source clean \
+          az webapp restart --name "$WEBAPP_NAME" --resource-group "${{ env.RESOURCE_GROUP }}"
+          
+          # Delete any existing deployment files
+          echo "Removing existing deployment files..."
+          az webapp config appsettings set \
             --name "$WEBAPP_NAME" \
-            --resource-group "${{ env.RESOURCE_GROUP }}"
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --settings WEBSITE_RUN_FROM_PACKAGE=""
           
           # Wait for cleanup to complete
           echo "Waiting for cleanup to complete..."
