@@ -27,6 +27,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+
+    - name: Set file permissions
+      run: |
+        chmod +x startup.sh
         
     - name: Login to Azure
       uses: azure/login@v1
@@ -83,10 +87,13 @@ jobs:
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --settings \
               SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-              PYTHON_ENABLE_GUNICORN=true \
-              STREAMLIT_SERVER_PORT=8000 \
+              PYTHON_ENABLE_GUNICORN=false \
+              PORT=8000 \
               WEBSITES_PORT=8000 \
-              PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+              PYTHON_VERSION=${{ env.PYTHON_VERSION }} \
+              STREAMLIT_SERVER_PORT=8000 \
+              STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
+              STREAMLIT_SERVER_HEADLESS=true
 
           # Configure startup command and Python version
           az webapp config set \
