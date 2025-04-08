@@ -177,15 +177,41 @@ jobs:
         # Clean up
         rm -rf deploy_temp
 
-    - name: Stop existing web app
+    - name: Stop and clean existing web app
       uses: azure/CLI@v1
       with:
         inlineScript: |
           WEBAPP_NAME="${{ secrets.AZURE_WEBAPP_NAME }}"
-          echo "Stopping web app before deployment..."
-          az webapp stop \
+          echo "Stopping web app and cleaning up before deployment..."
+          
+          # Stop the web app
+          echo "Stopping web app..."
+          az webapp stop --name "$WEBAPP_NAME" --resource-group "${{ env.RESOURCE_GROUP }}"
+          
+          # Delete any existing deployment slots
+          echo "Cleaning up deployment slots..."
+          az webapp deployment slot list \
+            --name "$WEBAPP_NAME" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --query "[].name" -o tsv | while read -r slot; do
+            if [ "$slot" != "production" ]; then
+              echo "Deleting slot: $slot"
+              az webapp deployment slot delete \
+                --name "$WEBAPP_NAME" \
+                --resource-group "${{ env.RESOURCE_GROUP }}" \
+                --slot "$slot"
+            fi
+          done
+          
+          # Clean up existing deployments
+          echo "Cleaning up existing deployments..."
+          az webapp deployment source clean \
             --name "$WEBAPP_NAME" \
             --resource-group "${{ env.RESOURCE_GROUP }}"
+          
+          # Wait for cleanup to complete
+          echo "Waiting for cleanup to complete..."
+          sleep 30
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
@@ -222,7 +248,8 @@ jobs:
             az webapp log tail \
               --name "$WEBAPP_NAME" \
               --resource-group "${{ env.RESOURCE_GROUP }}" \
-              --provider http
+              --provider http \
+              --filter Error
             exit 1
           fi
           
