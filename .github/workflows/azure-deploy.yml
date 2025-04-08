@@ -1,5 +1,6 @@
 name: Deploy to Azure
 
+# Note: Requires Azure Service Principal with Contributor role on the resource group
 on:
   push:
     branches:
