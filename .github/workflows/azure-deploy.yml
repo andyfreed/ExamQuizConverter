@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: '3.10.16'
   STARTUP_COMMAND: 'sh startup.sh'
   AZURE_LOCATION: 'eastus'
 
@@ -109,8 +109,8 @@ jobs:
             --name "$WEBAPP_NAME" \
             --resource-group "$RESOURCE_GROUP" \
             --startup-file "${{ env.STARTUP_COMMAND }}" \
-            --python-version ${{ env.PYTHON_VERSION }} \
-            --linux-fx-version "PYTHON|${{ env.PYTHON_VERSION }}"
+            --python-version "3.10" \
+            --linux-fx-version "PYTHON|3.10"
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
