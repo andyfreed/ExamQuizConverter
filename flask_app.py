@@ -324,9 +324,15 @@ def read_file_content(file):
         return None, detailed_error
 
 @app.route('/', methods=['GET', 'POST'])
-def index():
+def index_or_health():
     global global_df
     
+    # Just return "OK" for simple health checks with no Accept header
+    # This supports DigitalOcean's health checks
+    if 'Accept' not in request.headers or request.headers['Accept'] == '*/*':
+        return "OK"
+    
+    # Normal processing for browser requests
     if request.method == 'POST':
         # Check if files were uploaded
         if 'question_file' not in request.files:
@@ -424,6 +430,11 @@ def download(format):
         
     else:
         return "Invalid format specified", 400
+
+# Add a health check route
+@app.route('/health')
+def health_check():
+    return "OK"
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 
