@@ -1,10 +1,13 @@
 [server]
+port = 8501
 address = "0.0.0.0"
+headless = false
 enableCORS = false
 enableXsrfProtection = false
+runOnSave = true
 
 [browser]
-serverAddress = "0.0.0.0"
+serverAddress = "localhost"
 gatherUsageStats = false
 
 [theme]

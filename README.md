@@ -71,6 +71,30 @@ A Streamlit application for converting exam questions between different formats.
    ```
 10. Detach from the tmux session by pressing `Ctrl+B` and then `D`
 
+## Flask Version
+
+This application now has a Flask-based alternative implementation in `flask_app.py`. The Flask version
+provides the same functionality as the Streamlit version but may be more compatible with some hosting environments.
+
+### Running the Flask Version
+
+1. Install the required dependencies: `pip install -r requirements.txt`
+2. Run the Flask app: `python flask_app.py`
+3. Open your browser to `http://localhost:5000`
+
+### Deploying the Flask Version to DigitalOcean
+
+1. Push your code to GitHub
+2. Log in to DigitalOcean
+3. Go to the App Platform section
+4. Click "Create App" and select your GitHub repository
+5. Select Python as the environment
+6. Use the `flask_digitalocean.sh` script for deployment
+7. For Health Checks:
+   - Make sure to configure the health check URL to `/`
+   - Set the port to `8080`
+8. Deploy the app
+
 ## Usage
 
 1. Open the application in your web browser

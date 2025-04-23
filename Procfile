@@ -1,1 +1,1 @@
-web: bash start_digitalocean.sh 
+web: bash flask_digitalocean.sh 
