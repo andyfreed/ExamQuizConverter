@@ -5,82 +5,57 @@ set -e
 
 echo "Starting Digital Ocean deployment..."
 
+# Make sure assets directory exists
+mkdir -p attached_assets
+
 # Install dependencies
 echo "Installing dependencies..."
 pip install -r requirements.txt
 
-# Get the port from environment variable or use default
-PORT=${PORT:-8080}
-echo "Using port: $PORT"
-
-# Make sure assets directory exists
-mkdir -p attached_assets
-
-# Create a direct server script that combines both servers
-cat > server.py << 'EOF'
-import streamlit.web.cli as stcli
+# Create a simple stand-alone health check server - WILL START FIRST
+cat > health_server.py << 'EOF'
 import http.server
 import socketserver
-import threading
-import time
 import os
+import threading
 import sys
 
-# Get port from environment or use default
+# Use the PORT environment variable
 PORT = int(os.environ.get("PORT", 8080))
-print(f"Using port: {PORT}")
 
-# Define handler for health check requests
-class HealthCheckHandler(http.server.SimpleHTTPRequestHandler):
+# Define a simple handler
+class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/health' or self.path == '/':
             self.send_response(200)
-            self.send_header('Content-type', 'text/html')
+            self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write(b"OK")
+            print(f"Health check request received at {self.path}")
         else:
             self.send_response(404)
             self.end_headers()
     
     def log_message(self, format, *args):
-        # Suppress log messages
-        return
+        print(f"Health check: {format % args}")
 
-def run_health_check_server():
-    """Run the health check server in a separate thread"""
-    try:
-        print(f"Starting health check server on port {PORT}")
-        server = socketserver.TCPServer(("0.0.0.0", PORT), HealthCheckHandler)
-        server.serve_forever()
-    except Exception as e:
-        print(f"Error in health check server: {e}")
-        sys.exit(1)
-
-def run_streamlit():
-    """Run the Streamlit application"""
-    print("Starting Streamlit application...")
-    # Use Streamlit's own CLI to run the app
-    sys.argv = ["streamlit", "run", "app.py", 
-                "--server.port", "8501",
-                "--server.address", "0.0.0.0",
-                "--server.headless", "true",
-                "--server.enableCORS", "false",
-                "--server.enableXsrfProtection", "false"]
-    stcli.main()
-
-if __name__ == "__main__":
-    # Start health check server thread
-    health_thread = threading.Thread(target=run_health_check_server)
-    health_thread.daemon = True
-    health_thread.start()
-    
-    # Give the health check server time to start
-    time.sleep(1)
-    
-    # Run Streamlit in the main thread
-    run_streamlit()
+# Start the server
+print(f"Starting health check server on port {PORT}")
+try:
+    httpd = socketserver.TCPServer(("0.0.0.0", PORT), Handler)
+    httpd.serve_forever()
+except Exception as e:
+    print(f"Health check server error: {e}")
+    sys.exit(1)
 EOF
 
-# Run the combined server
-echo "Starting server..."
-python server.py 
+# Start health check server FIRST
+nohup python health_server.py > health.log 2>&1 &
+
+# Wait for health server to start
+echo "Waiting for health check server to start..."
+sleep 3
+
+# Start streamlit directly
+echo "Starting Streamlit application..."
+exec streamlit run app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true --server.enableCORS false --server.enableXsrfProtection false 

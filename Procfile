@@ -1,1 +1,1 @@
-web: bash -c "bash start_digitalocean.sh" 
+web: bash start_digitalocean.sh 

@@ -6,8 +6,6 @@ import chardet
 from docx import Document
 import re
 import os
-import threading
-import time
 
 # Set page config at the very beginning
 st.set_page_config(
@@ -21,49 +19,9 @@ st.set_page_config(
 if not os.path.exists("attached_assets"):
     os.makedirs("attached_assets", exist_ok=True)
 
-# Add a health check endpoint
-def health_check_middleware():
-    import http.server
-    import socketserver
-    
-    class HealthHandler(http.server.SimpleHTTPRequestHandler):
-        def do_GET(self):
-            if self.path == '/health':
-                self.send_response(200)
-                self.send_header('Content-type', 'text/plain')
-                self.end_headers()
-                self.wfile.write(b"OK")
-            else:
-                self.send_error(404)
-        
-        def log_message(self, format, *args):
-            # Suppress log messages
-            return
-    
-    try:
-        # Try to use 8080 first, then fallback to other ports
-        ports = [8080, 8000, 8888]
-        server = None
-        
-        for port in ports:
-            try:
-                server = socketserver.TCPServer(("0.0.0.0", port), HealthHandler)
-                print(f"Health check server started on port {port}")
-                break
-            except OSError:
-                continue
-        
-        if server:
-            server.serve_forever()
-        else:
-            print("Could not start health check server on any port")
-    except Exception as e:
-        print(f"Health check server error: {e}")
-
-# Start health check in background
-health_thread = threading.Thread(target=health_check_middleware)
-health_thread.daemon = True
-health_thread.start()
+# Log deployment information
+print(f"Streamlit app starting - running in {os.getcwd()}")
+print(f"PORT environment variable: {os.environ.get('PORT', 'not set')}")
 
 def read_docx_content(file_bytes):
     """Read content from a .docx file."""
