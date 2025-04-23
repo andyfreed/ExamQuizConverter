@@ -1,23 +1,3 @@
-#!/bin/bash
-
-# Exit on error
-set -e
-
-echo "Starting Digital Ocean deployment..."
-
-# Install dependencies
-echo "Installing dependencies..."
-pip install -r requirements.txt
-
-# Get the port from environment variable or use default
-PORT=${PORT:-8080}
-echo "Using port: $PORT"
-
-# Make sure assets directory exists
-mkdir -p attached_assets
-
-# Create a direct server script that combines both servers
-cat > server.py << 'EOF'
 import streamlit.web.cli as stcli
 import http.server
 import socketserver
@@ -37,14 +17,15 @@ class HealthCheckHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
-            self.wfile.write(b"OK")
+            self.wfile.write(b"Health Check OK")
+            print(f"Health check request received on {self.path}")
         else:
             self.send_response(404)
             self.end_headers()
     
     def log_message(self, format, *args):
-        # Suppress log messages
-        return
+        # Use print instead of suppressing completely
+        print(f"Health check: {format % args}")
 
 def run_health_check_server():
     """Run the health check server in a separate thread"""
@@ -69,18 +50,19 @@ def run_streamlit():
     stcli.main()
 
 if __name__ == "__main__":
+    # Create assets directory
+    os.makedirs("attached_assets", exist_ok=True)
+    
     # Start health check server thread
     health_thread = threading.Thread(target=run_health_check_server)
     health_thread.daemon = True
     health_thread.start()
     
     # Give the health check server time to start
-    time.sleep(1)
+    time.sleep(3)
+    
+    # Make sure it's running
+    print("Health check server should be running now")
     
     # Run Streamlit in the main thread
-    run_streamlit()
-EOF
-
-# Run the combined server
-echo "Starting server..."
-python server.py 
+    run_streamlit() 
