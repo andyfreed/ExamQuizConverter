@@ -1,0 +1,1 @@
+web: bash start_digitalocean.sh 

@@ -28,8 +28,11 @@ A Streamlit application for converting exam questions between different formats.
 4. Click "Create App" and select your GitHub repository
 5. Select Python as the environment
 6. Set the build command: `pip install -r requirements.txt`
-7. Set the run command: `streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true --server.enableCORS false --server.enableXsrfProtection false`
-8. Deploy the app
+7. Set the run command: `streamlit run app.py --server.port 8080 --server.address 0.0.0.0 --server.headless true --server.enableCORS false --server.enableXsrfProtection false`
+8. For Health Checks:
+   - Make sure to configure the health check URL to `/`
+   - Set the port to `8080`
+9. Deploy the app
 
 ### Using a Droplet
 
@@ -64,7 +67,7 @@ A Streamlit application for converting exam questions between different formats.
    ```
 9. Run the application:
    ```
-   streamlit run app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true --server.enableCORS false --server.enableXsrfProtection false
+   streamlit run app.py --server.port 8080 --server.address 0.0.0.0 --server.headless true --server.enableCORS false --server.enableXsrfProtection false
    ```
 10. Detach from the tmux session by pressing `Ctrl+B` and then `D`
 
