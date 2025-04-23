@@ -4,10 +4,10 @@ from typing import Dict, List, Tuple
 
 class ExamParser:
     def __init__(self):
-        # Updated pattern to handle company names with Inc., Ltd., etc.
-        self.question_pattern = r'(\d+)\.\s*(.*?)(?=\s*(?:\n[A-Da-d]\.|$))'
-        # Modified answer pattern to be more strict about answer format
-        self.answer_pattern = r'(?:^|\n)\s*([A-Da-d])\.\s*(.*?)(?=\s*(?:\n[A-Da-d]\.|$|\n\d+\.|$))'
+        # Updated pattern to fix invalid escape sequence and handle company names with Inc., Ltd., etc.
+        self.question_pattern = r'(\d+)\.\s*(.*?)(?=\s*(?:\n[A-Da-d]\.|\Z))'
+        # Modified answer pattern to be more strict about answer format and fix escape sequence
+        self.answer_pattern = r'(?:^|\n)\s*([A-Da-d])\.\s*(.*?)(?=\s*(?:\n[A-Da-d]\.|\Z|\n\d+\.|\Z))'
 
     def parse_answer_key(self, answer_key_content: str) -> Dict[str, str]:
         """Parse answer key content into a dictionary."""

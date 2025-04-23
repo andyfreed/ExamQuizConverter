@@ -5,6 +5,7 @@ from parser import ExamParser
 import chardet
 from docx import Document
 import re
+import os
 
 # Set page config at the very beginning
 st.set_page_config(
@@ -13,6 +14,10 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Check if assets directory exists
+if not os.path.exists("attached_assets"):
+    os.makedirs("attached_assets", exist_ok=True)
 
 def read_docx_content(file_bytes):
     """Read content from a .docx file."""
@@ -182,8 +187,12 @@ def main():
                             mime="text/csv"
                         )
 
-                    # Display success animation
-                    st.image("attached_assets/pepe-pepe-wink.gif", caption="Processing complete! 🎉")
+                    # Display success message instead of animation if GIF doesn't exist
+                    gif_path = "attached_assets/pepe-pepe-wink.gif"
+                    if os.path.exists(gif_path):
+                        st.image(gif_path, caption="Processing complete! 🎉")
+                    else:
+                        st.success("Processing complete! 🎉")
 
                     # Display statistics
                     st.subheader("File Statistics")
